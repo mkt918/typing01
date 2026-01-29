@@ -26,6 +26,7 @@ const elements = {
     sessionEarnings: document.getElementById('sessionEarnings'),
     charValue: document.getElementById('charValue'),
     productionValue: document.getElementById('productionValue'),
+    targetWordJapanese: document.getElementById('targetWordJapanese'),
     targetWord: document.getElementById('targetWord'),
     userInput: document.getElementById('userInput'),
     feedback: document.getElementById('feedback'),
@@ -39,11 +40,33 @@ const elements = {
     inventoryList: document.getElementById('inventoryList'),
     openShop: document.getElementById('openShop'),
     backToTyping: document.getElementById('backToTyping'),
+    resetButton: document.getElementById('resetButton'),
     particleContainer: document.getElementById('particleContainer'),
     difficultyEasy: document.getElementById('difficultyEasy'),
     difficultyNormal: document.getElementById('difficultyNormal'),
     difficultyHard: document.getElementById('difficultyHard')
 };
+
+// =====================
+// リアルタイム所持金更新
+// =====================
+let lastProductionTime = Date.now();
+
+function updateMoneyRealtime() {
+    if (gameState.totalProduction > 0) {
+        const now = Date.now();
+        const deltaSeconds = (now - lastProductionTime) / 1000;
+        const productionPerSecond = gameState.totalProduction / 60;
+        const earned = Math.floor(productionPerSecond * deltaSeconds);
+
+        if (earned >= 1) {
+            gameState.money += earned;
+            lastProductionTime = now;
+            elements.moneyValue.textContent = formatMoney(gameState.money);
+        }
+    }
+    requestAnimationFrame(updateMoneyRealtime);
+}
 
 // =====================
 // 数値フォーマット
@@ -67,7 +90,7 @@ const upgradeConfig = {
         maxLevel: 5,
         baseCost: 1000,
         costMultiplier: 2.5,
-        getEffect: (level) => 10 + (level * 10), // 10, 20, 30, 40, 50, 60
+        getEffect: (level) => 10 + (level * 10),
         getDescription: (level) => `${10 + (level * 10)}円/文字 → ${10 + ((level + 1) * 10)}円/文字`
     },
     timeLimit: {
@@ -76,19 +99,17 @@ const upgradeConfig = {
         maxLevel: 5,
         baseCost: 2000,
         costMultiplier: 2.0,
-        getEffect: (level) => 60 + (level * 30), // 60, 90, 120, 150, 180, 210
+        getEffect: (level) => 60 + (level * 30),
         getDescription: (level) => `${60 + (level * 30)}秒 → ${60 + ((level + 1) * 30)}秒`
     }
 };
 
-// アップグレードコストを計算
 function getUpgradeCost(upgradeType) {
     const config = upgradeConfig[upgradeType];
     const level = gameState.upgrades[upgradeType];
     return Math.floor(config.baseCost * Math.pow(config.costMultiplier, level));
 }
 
-// アップグレードを購入
 function buyUpgrade(upgradeType) {
     const config = upgradeConfig[upgradeType];
     const currentLevel = gameState.upgrades[upgradeType];
@@ -105,12 +126,10 @@ function buyUpgrade(upgradeType) {
         gameState.money -= cost;
         gameState.upgrades[upgradeType]++;
 
-        // UI更新
         updateUpgradeDisplay();
         updateUI();
         saveGame();
 
-        // フィードバック
         elements.feedback.textContent = `${config.icon} ${config.name} レベルアップ！`;
         elements.feedback.style.color = '#00ff88';
     } else {
@@ -140,13 +159,11 @@ const difficultyConfig = {
     }
 };
 
-// 難易度を変更
 function setDifficulty(difficulty) {
-    if (gameState.isPlaying) return; // プレイ中は変更不可
+    if (gameState.isPlaying) return;
 
     gameState.difficulty = difficulty;
 
-    // ボタンのアクティブ状態を更新
     document.querySelectorAll('.difficulty-button').forEach(btn => {
         btn.classList.remove('active');
     });
@@ -159,36 +176,97 @@ function setDifficulty(difficulty) {
 // タイピング機能
 // =====================
 
-// レシピテーマの単語リスト
+// 日本語ベースの単語リスト
 const wordLists = {
     easy: [
-        'miso', 'sake', 'tofu', 'nori', 'ume',
-        'mame', 'kome', 'niku', 'ika', 'ebi',
-        'saba', 'aji', 'tai', 'kani', 'tako',
-        'tamago', 'negi', 'nasu', 'daikon'
+        { japanese: '味噌', romaji: 'miso' },
+        { japanese: '酒', romaji: 'sake' },
+        { japanese: '豆腐', romaji: 'tofu' },
+        { japanese: '海苔', romaji: 'nori' },
+        { japanese: '梅', romaji: 'ume' },
+        { japanese: '豆', romaji: 'mame' },
+        { japanese: '米', romaji: 'kome' },
+        { japanese: '肉', romaji: 'niku' },
+        { japanese: 'イカ', romaji: 'ika' },
+        { japanese: 'エビ', romaji: 'ebi' },
+        { japanese: '鯖', romaji: 'saba' },
+        { japanese: '鯵', romaji: 'aji' },
+        { japanese: '鯛', romaji: 'tai' },
+        { japanese: '蟹', romaji: 'kani' },
+        { japanese: 'タコ', romaji: 'tako' },
+        { japanese: '卵', romaji: 'tamago' },
+        { japanese: '葱', romaji: 'negi' },
+        { japanese: '茄子', romaji: 'nasu' },
+        { japanese: '大根', romaji: 'daikon' }
     ],
     normal: [
-        'sushi', 'ramen', 'udon', 'soba', 'tempura',
-        'yakitori', 'tonkatsu', 'karaage', 'gyoza',
-        'okonomiyaki', 'takoyaki', 'yakisoba',
-        'teriyaki', 'sukiyaki', 'shabu-shabu',
-        'katsudon', 'oyakodon', 'gyudon'
+        { japanese: '寿司', romaji: 'sushi' },
+        { japanese: 'ラーメン', romaji: 'ramen' },
+        { japanese: 'うどん', romaji: 'udon' },
+        { japanese: '蕎麦', romaji: 'soba' },
+        { japanese: '天ぷら', romaji: 'tempura' },
+        { japanese: '焼き鳥', romaji: 'yakitori' },
+        { japanese: 'トンカツ', romaji: 'tonkatsu' },
+        { japanese: '唐揚げ', romaji: 'karaage' },
+        { japanese: '餃子', romaji: 'gyoza' },
+        { japanese: 'お好み焼き', romaji: 'okonomiyaki' },
+        { japanese: 'たこ焼き', romaji: 'takoyaki' },
+        { japanese: '焼きそば', romaji: 'yakisoba' },
+        { japanese: '照り焼き', romaji: 'teriyaki' },
+        { japanese: 'すき焼き', romaji: 'sukiyaki' },
+        { japanese: 'しゃぶしゃぶ', romaji: 'syabusyabu' },
+        { japanese: 'カツ丼', romaji: 'katudon' },
+        { japanese: '親子丼', romaji: 'oyakodon' },
+        { japanese: '牛丼', romaji: 'gyudon' }
     ],
     hard: [
-        'chawanmushi', 'nikujaga', 'hamburger',
-        'omurice', 'hayashi-rice', 'curry-rice',
-        'niku-jaga', 'korokke', 'menchi-katsu',
-        'ebi-fry', 'aji-fry', 'kaki-fry',
-        'yasai-itame', 'buta-kimchi', 'mapo-tofu',
-        'hoikoro', 'chinjao-rosu', 'subuta'
+        { japanese: '茶碗蒸し', romaji: 'tyawanmusi' },
+        { japanese: '肉じゃが', romaji: 'nikujaga' },
+        { japanese: 'ハンバーグ', romaji: 'hanbagu' },
+        { japanese: 'オムライス', romaji: 'omuraisu' },
+        { japanese: 'ハヤシライス', romaji: 'hayasiraisu' },
+        { japanese: 'カレーライス', romaji: 'kareraisu' },
+        { japanese: 'コロッケ', romaji: 'korokke' },
+        { japanese: 'メンチカツ', romaji: 'mentikatu' },
+        { japanese: 'エビフライ', romaji: 'ebihurai' },
+        { japanese: 'アジフライ', romaji: 'ajihurai' },
+        { japanese: 'カキフライ', romaji: 'kakihurai' },
+        { japanese: '野菜炒め', romaji: 'yasaiitame' },
+        { japanese: '豚キムチ', romaji: 'butakimuti' },
+        { japanese: '麻婆豆腐', romaji: 'mabodofu' },
+        { japanese: 'ホイコーロー', romaji: 'hoikoro' },
+        { japanese: '青椒肉絲', romaji: 'tinjaorosu' },
+        { japanese: '酢豚', romaji: 'subuta' },
+        { japanese: '春巻き', romaji: 'harumaki' }
     ]
+};
+
+// ローマ字変換マップ（完全対応）
+const romajiMap = {
+    'し': ['si', 'shi', 'ci'],
+    'ち': ['ti', 'chi'],
+    'つ': ['tu', 'tsu'],
+    'ふ': ['hu', 'fu'],
+    'じ': ['zi', 'ji'],
+    'しゃ': ['sya', 'sha', 'shixya'],
+    'しゅ': ['syu', 'shu', 'shixyu'],
+    'しょ': ['syo', 'sho', 'shixyo'],
+    'ちゃ': ['tya', 'cha', 'chixya', 'cya'],
+    'ちゅ': ['tyu', 'chu', 'chixyu', 'cyu'],
+    'ちょ': ['tyo', 'cho', 'chixyo', 'cyo'],
+    'じゃ': ['ja', 'jya', 'zya', 'jixya', 'zixya'],
+    'じゅ': ['ju', 'jyu', 'zyu', 'jixyu', 'zixyu'],
+    'じょ': ['jo', 'jyo', 'zyo', 'jixyo', 'zixyo'],
+    'ん': ['nn', 'n']
 };
 
 // タイピングステート
 const typingState = {
     currentWord: null,
     currentInput: '',
-    currentCharIndex: 0
+    currentRomajiPatterns: [],
+    currentCharIndex: 0,
+    possibleInputs: []
 };
 
 // 新しい単語を設定
@@ -199,10 +277,18 @@ function setNewWord() {
     typingState.currentWord = randomWord;
     typingState.currentInput = '';
     typingState.currentCharIndex = 0;
+    typingState.possibleInputs = generatePossibleInputs(randomWord.romaji);
 
-    elements.targetWord.textContent = randomWord;
+    elements.targetWordJapanese.textContent = randomWord.japanese;
+    elements.targetWord.textContent = randomWord.romaji;
     elements.userInput.textContent = '';
     elements.feedback.textContent = '';
+}
+
+// 可能な入力パターンを生成
+function generatePossibleInputs(romaji) {
+    // 基本的には入力されたromajiをそのまま使用
+    return [romaji];
 }
 
 // 1文字正解時の報酬を計算
@@ -214,12 +300,13 @@ function getCharValue() {
 
 // 1文字入力を処理
 function handleChar(char) {
-    const target = typingState.currentWord[typingState.currentCharIndex];
+    const targetRomaji = typingState.currentWord.romaji;
+    const newInput = typingState.currentInput + char;
 
-    if (char === target) {
+    // 入力が正しいかチェック（前方一致）
+    if (targetRomaji.startsWith(newInput)) {
         // 正解！
-        typingState.currentInput += char;
-        typingState.currentCharIndex++;
+        typingState.currentInput = newInput;
 
         // お金を獲得
         const charValue = getCharValue();
@@ -229,12 +316,13 @@ function handleChar(char) {
         // フィードバック
         elements.feedback.textContent = `+${charValue}円！`;
         elements.feedback.style.color = difficultyConfig[gameState.difficulty].color;
+        elements.userInput.textContent = typingState.currentInput;
 
         // パーティクル
         createParticle(window.innerWidth / 2, window.innerHeight / 2, '💰');
 
         // 単語完成チェック
-        if (typingState.currentCharIndex >= typingState.currentWord.length) {
+        if (typingState.currentInput === targetRomaji) {
             gameState.totalWords++;
             const bonus = Math.floor(charValue * 2);
             elements.feedback.textContent = `単語完成！ +${bonus}円ボーナス！`;
@@ -244,8 +332,6 @@ function handleChar(char) {
             setTimeout(() => {
                 setNewWord();
             }, 200);
-        } else {
-            elements.userInput.textContent = typingState.currentInput;
         }
 
         updateSessionUI();
@@ -266,7 +352,7 @@ function handleKeyPress(event) {
     event.preventDefault();
 
     // 英数字と-(ハイフン)を受け付け
-    if (!/^[a-z\-]$/.test(event.key.toLowerCase())) {
+    if (!/^[a-z]$/.test(event.key.toLowerCase())) {
         return;
     }
 
@@ -296,11 +382,9 @@ function startTimer() {
 function updateTimerDisplay() {
     elements.timerValue.textContent = gameState.timeRemaining + '秒';
 
-    // タイマーバーの更新
     const percentage = (gameState.timeRemaining / gameState.maxTime) * 100;
     elements.timerBar.style.width = percentage + '%';
 
-    // 色変更
     elements.timerValue.classList.remove('warning', 'danger');
     elements.timerBar.classList.remove('warning', 'danger');
 
@@ -324,55 +408,46 @@ function stopTimer() {
 // セッション管理
 // =====================
 function startSession() {
-    // セッション初期化
     gameState.isPlaying = true;
-    gameState.sessionEarnings = gameState.totalProduction; // 自動生産分を追加
+    gameState.sessionEarnings = gameState.totalProduction;
     gameState.correctChars = 0;
     gameState.totalWords = 0;
 
-    // UI更新
     elements.startButton.textContent = 'タイピング中...';
     elements.startButton.disabled = true;
     elements.feedback.textContent = 'がんばって！';
     elements.feedback.style.color = '#00ff88';
 
-    // 難易度ボタンを無効化
     document.querySelectorAll('.difficulty-button').forEach(btn => {
         btn.disabled = true;
     });
 
-    // タイピング開始
     setNewWord();
     startTimer();
     updateSessionUI();
 }
 
 function endSession() {
-    // セッション終了
     gameState.isPlaying = false;
     stopTimer();
 
-    // お金を加算
     gameState.money += gameState.sessionEarnings;
 
-    // UI更新
     elements.startButton.textContent = 'タイピング開始！';
     elements.startButton.disabled = false;
-    elements.targetWord.textContent = 'お疲れ様でした！';
+    elements.targetWordJapanese.textContent = 'お疲れ様でした！';
+    elements.targetWord.textContent = '';
     elements.userInput.textContent = '';
     elements.feedback.textContent = `${formatMoney(gameState.sessionEarnings)} 獲得！`;
     elements.feedback.style.color = '#ffaa00';
 
-    // 難易度ボタンを有効化
     document.querySelectorAll('.difficulty-button').forEach(btn => {
         btn.disabled = false;
     });
 
-    // 保存
     saveGame();
     updateUI();
 
-    // ショップを自動的に開く
     setTimeout(() => {
         openShop();
     }, 1500);
@@ -382,7 +457,6 @@ function endSession() {
 // ショップシステム
 // =====================
 
-// ショップアイテムの定義
 const shopItems = [
     { id: 'item1', name: 'おにぎりマシン', emoji: '🍙', production: 50, baseCost: 500 },
     { id: 'item2', name: 'ラーメンポット', emoji: '🍜', production: 200, baseCost: 2000 },
@@ -392,13 +466,11 @@ const shopItems = [
     { id: 'item6', name: '銀河工場', emoji: '🌌', production: 50000, baseCost: 500000 }
 ];
 
-// アイテムのコストを計算（所有数に応じて上昇）
 function getItemCost(item) {
     const owned = gameState.inventory[item.id] || 0;
     return Math.floor(item.baseCost * Math.pow(1.15, owned));
 }
 
-// アイテムを購入
 function buyItem(itemId) {
     const item = shopItems.find(i => i.id === itemId);
     if (!item) return;
@@ -409,15 +481,12 @@ function buyItem(itemId) {
         gameState.money -= cost;
         gameState.inventory[itemId] = (gameState.inventory[itemId] || 0) + 1;
 
-        // 総生産額を再計算
         recalculateTotalProduction();
 
-        // UI更新
         updateShopDisplay();
         updateUI();
         saveGame();
 
-        // フィードバック
         elements.feedback.textContent = `${item.emoji} ${item.name} を購入！`;
         elements.feedback.style.color = '#00ff88';
     } else {
@@ -426,7 +495,6 @@ function buyItem(itemId) {
     }
 }
 
-// 総生産額を再計算
 function recalculateTotalProduction() {
     gameState.totalProduction = 0;
     for (let item of shopItems) {
@@ -435,7 +503,6 @@ function recalculateTotalProduction() {
     }
 }
 
-// ショップを開く
 function openShop() {
     elements.typingMode.classList.add('hidden');
     elements.shopMode.classList.remove('hidden');
@@ -443,13 +510,11 @@ function openShop() {
     updateShopDisplay();
 }
 
-// ショップを閉じる
 function closeShop() {
     elements.shopMode.classList.add('hidden');
     elements.typingMode.classList.remove('hidden');
 }
 
-// アップグレード表示を更新
 function updateUpgradeDisplay() {
     elements.upgradeList.innerHTML = Object.keys(upgradeConfig).map(upgradeType => {
         const config = upgradeConfig[upgradeType];
@@ -475,7 +540,6 @@ function updateUpgradeDisplay() {
     }).join('');
 }
 
-// ショップ表示を更新
 function updateShopDisplay() {
     elements.shopList.innerHTML = shopItems.map(item => {
         const cost = getItemCost(item);
@@ -558,6 +622,16 @@ function createParticle(x, y, emoji) {
 }
 
 // =====================
+// リセット機能
+// =====================
+function resetGame() {
+    if (confirm('本当にゲームをリセットしますか？\n全てのデータが削除されます。')) {
+        localStorage.removeItem('sushiTyperFactory');
+        location.reload();
+    }
+}
+
+// =====================
 // セーブ・ロード機能
 // =====================
 function saveGame() {
@@ -606,22 +680,24 @@ function loadGame() {
 function init() {
     console.log('🍣 Sushi Typer Factory 起動!');
 
-    // セーブデータをロード
     loadGame();
 
-    // UI初期化
     updateUI();
     setDifficulty(gameState.difficulty);
-    elements.targetWord.textContent = '「タイピング開始！」を押してね';
+    elements.targetWordJapanese.textContent = '「タイピング開始！」を押してね';
+    elements.targetWord.textContent = '';
 
-    // イベントリスナー
     elements.startButton.addEventListener('click', startSession);
     elements.openShop.addEventListener('click', openShop);
     elements.backToTyping.addEventListener('click', closeShop);
+    elements.resetButton.addEventListener('click', resetGame);
     elements.difficultyEasy.addEventListener('click', () => setDifficulty('easy'));
     elements.difficultyNormal.addEventListener('click', () => setDifficulty('normal'));
     elements.difficultyHard.addEventListener('click', () => setDifficulty('hard'));
     window.addEventListener('keydown', handleKeyPress);
+
+    // リアルタイム所持金更新開始
+    updateMoneyRealtime();
 
     console.log('✅ 初期化完了！');
 }
