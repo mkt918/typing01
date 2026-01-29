@@ -11,7 +11,6 @@
 <body>
     <header class="game-header-compact">
         <div class="header-left">
-            <div class="money-compact">💰 <span id="moneyValue">0円</span></div>
             <div class="energy-mini-container">
                 ⚡ <span id="energyValueText">100%</span>
                 <div class="energy-bar-mini-wrapper">
@@ -42,6 +41,15 @@
         <div id="typingMode" class="typing-mode">
             <div class="sushi-display">
                 <div class="sushi-emoji">🍣</div>
+                <div class="money-hub">
+                    <div class="money-display-main">
+                        <span id="moneyValue">0円</span>
+                    </div>
+                    <div class="feedback-container">
+                        <div id="feedback" class="feedback-main"></div>
+                        <div id="comboDisplay" class="combo-display">0 Combo</div>
+                    </div>
+                </div>
             </div>
 
             <!-- 難易度選択 -->
@@ -61,18 +69,6 @@
                 <div id="targetWordJapanese" class="target-word-japanese">準備中...</div>
                 <div id="targetWord" class="target-word">準備中...</div>
                 <div id="userInput" class="user-input"></div>
-                <div id="feedback" class="feedback"></div>
-            </div>
-
-            <div class="typing-stats">
-                <div class="stat-box">
-                    <div class="stat-number" id="correctChars">0</div>
-                    <div class="stat-label-small">正解文字数</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-number" id="totalWords">0</div>
-                    <div class="stat-label-small">完成単語</div>
-                </div>
             </div>
 
             <button id="startButton" class="start-button">タイピング開始！</button>
@@ -81,6 +77,14 @@
         <!-- ショップモード -->
         <div id="shopMode" class="shop-mode hidden">
             <h2 class="shop-title">🛒 ショップ</h2>
+
+            <div class="shop-header-row">
+                <div class="shop-money-display">
+                    <span class="shop-money-label">現在の所持金</span>
+                    <span class="shop-money-value" id="shopMoneyValue">0円</span>
+                </div>
+                <button id="backToTypingUpper" class="back-button-shop-inline">タイピングに戻る</button>
+            </div>
 
             <!-- アップグレードセクション -->
             <div class="shop-section">
@@ -99,8 +103,6 @@
                 </div>
                 <div id="shopList" class="shop-list"></div>
             </div>
-
-            <button id="backToTyping" class="back-button">タイピングに戻る</button>
         </div>
     </main>
 
@@ -118,6 +120,7 @@
     <!-- パーティクルコンテナ -->
     <div id="particleContainer" class="particle-container"></div>
 
+    <script src="words.js"></script>
     <script src="script.js"></script>
 </body>
 

@@ -7,15 +7,18 @@ const gameState = {
     totalProduction: 0,         // 設備による自動生産額（毎分）
     inventory: {},              // 所持設備 { itemId: count }
     upgrades: {                 // アップグレードレベル
-        charValue: 0,           // 文字単価レベル (0-5)
-        timeLimit: 0            // 制限時間レベル (0-5)
+        charValue: 0,           // 文字単価レベル
+        timeLimit: 0,           // 制限時間レベル
+        comboMultiplier: 0,     // フィーバー倍率レベル
+        unlockNormal: 0,        // 普通モード解放 (0 or 1)
+        unlockHard: 0           // 難しいモード解放 (0 or 1)
     },
     difficulty: 'easy',         // 現在の難易度
     correctChars: 0,            // 今回のセッションの正解文字数
     totalWords: 0,              // 今回のセッションの完成単語数
     isPlaying: false,           // タイピング中かどうか
-    timeRemaining: 60,          // 残り時間（秒）
-    maxTime: 60,                // 最大時間（秒）
+    timeRemaining: 30,          // 残り時間（秒）
+    maxTime: 30,                // 最大時間（秒）
     energy: 100,                // 工場の電力 0.0〜100.0
     lastProductionTime: Date.now(),
     lastEnergyUpdateTime: Date.now(),
@@ -36,8 +39,7 @@ const elements = {
     targetWord: document.getElementById('targetWord'),
     userInput: document.getElementById('userInput'),
     feedback: document.getElementById('feedback'),
-    correctChars: document.getElementById('correctChars'),
-    totalWords: document.getElementById('totalWords'),
+    comboDisplay: document.getElementById('comboDisplay'),
     startButton: document.getElementById('startButton'),
     typingMode: document.getElementById('typingMode'),
     shopMode: document.getElementById('shopMode'),
@@ -45,7 +47,8 @@ const elements = {
     shopList: document.getElementById('shopList'),
     inventoryList: document.getElementById('inventoryList'),
     openShop: document.getElementById('openShop'),
-    backToTyping: document.getElementById('backToTyping'),
+    backToTyping: document.getElementById('backToTypingUpper'),
+    shopMoneyValue: document.getElementById('shopMoneyValue'),
     resetButton: document.getElementById('resetButton'),
     particleContainer: document.getElementById('particleContainer'),
     difficultyEasy: document.getElementById('difficultyEasy'),
@@ -123,11 +126,6 @@ function endFever() {
 // 数値フォーマット
 // =====================
 function formatMoney(value) {
-    if (value >= 100000000) {
-        return (value / 100000000).toFixed(1) + '億円';
-    } else if (value >= 10000) {
-        return (value / 10000).toFixed(1) + '万円';
-    }
     return value.toLocaleString() + '円';
 }
 
@@ -138,10 +136,10 @@ const upgradeConfig = {
     charValue: {
         name: '文字単価アップ',
         icon: '💰',
-        maxLevel: 100, // 上限を増やして1円ベースに対応
-        baseCost: 10,  // 初期コストも安く
+        maxLevel: 100,
+        baseCost: 50,  // 初期コストを引き上げ
         costMultiplier: 1.15,
-        getEffect: (level) => 1 + level, // 1円スタート、1レベルにつき+1円
+        getEffect: (level) => 1 + level,
         getDescription: (level) => `${1 + level}円 → ${1 + level + 1}円`
     },
     timeLimit: {
@@ -150,8 +148,8 @@ const upgradeConfig = {
         maxLevel: 30,
         baseCost: 300,
         costMultiplier: 1.2,
-        getEffect: (level) => 60 + (level * 5),
-        getDescription: (level) => `${60 + (level * 5)}秒 → ${60 + ((level + 1) * 5)}秒`
+        getEffect: (level) => 30 + (level * 2),
+        getDescription: (level) => `${30 + (level * 2)}秒 → ${30 + ((level + 1) * 2)}秒`
     },
     comboMultiplier: {
         name: 'コンボ集中力',
@@ -161,6 +159,24 @@ const upgradeConfig = {
         costMultiplier: 1.5,
         getEffect: (level) => 2.0 + (level * 0.1),
         getDescription: (level) => `フィーバー倍率 ${(2.0 + level * 0.1).toFixed(1)}倍 → ${(2.0 + (level + 1) * 0.1).toFixed(1)}倍`
+    },
+    unlockNormal: {
+        name: '難易度「普通」解放',
+        icon: '🔓',
+        maxLevel: 1,
+        baseCost: 5000,
+        costMultiplier: 1,
+        getEffect: (level) => level > 0,
+        getDescription: (level) => level > 0 ? '解放済み' : '「普通 (×1.5)」を解放します'
+    },
+    unlockHard: {
+        name: '難易度「難しい」解放',
+        icon: '🔓',
+        maxLevel: 1,
+        baseCost: 10000,
+        costMultiplier: 1,
+        getEffect: (level) => level > 0,
+        getDescription: (level) => level > 0 ? '解放済み' : '「難しい (×2.0)」を解放します'
     }
 };
 
@@ -222,6 +238,18 @@ const difficultyConfig = {
 function setDifficulty(difficulty) {
     if (gameState.isPlaying) return;
 
+    // 解放チェック
+    if (difficulty === 'normal' && !gameState.upgrades.unlockNormal) {
+        elements.feedback.textContent = '「普通 (Normal)」を解放するにはショップで購入してください！';
+        elements.feedback.style.color = '#ffaa00';
+        return;
+    }
+    if (difficulty === 'hard' && !gameState.upgrades.unlockHard) {
+        elements.feedback.textContent = '「難しい (Hard)」を解放するにはショップで購入してください！';
+        elements.feedback.style.color = '#ff4444';
+        return;
+    }
+
     gameState.difficulty = difficulty;
 
     document.querySelectorAll('.difficulty-button').forEach(btn => {
@@ -236,144 +264,7 @@ function setDifficulty(difficulty) {
 // タイピング機能
 // =====================
 
-// 日本語ベースの単語リスト
-const wordLists = {
-    easy: [
-        { japanese: '愛', romaji: 'ai' },
-        { japanese: '上', romaji: 'ue' },
-        { japanese: '家', romaji: 'ie' },
-        { japanese: '青い', romaji: 'aoi' },
-        { japanese: '甥', romaji: 'oi' },
-        { japanese: '会う', romaji: 'au' },
-        { japanese: '王', romaji: 'ou' },
-        { japanese: 'いいえ', romaji: 'iie' },
-        { japanese: '会合', romaji: 'kaigo' },
-        { japanese: '多い', romaji: 'ooi' },
-        { japanese: '会おう', romaji: 'aou' },
-        { japanese: '言う', romaji: 'iu' },
-        { japanese: '和え', romaji: 'ae' },
-        { japanese: '追う', romaji: 'ou' },
-        { japanese: '愛想', romaji: 'aiso' },
-        { japanese: '赤', romaji: 'aka' },
-        { japanese: '傘', romaji: 'kasa' },
-        { japanese: '朝', romaji: 'asa' },
-        { japanese: '足', romaji: 'asi' },
-        { japanese: 'そこ', romaji: 'soko' },
-        { japanese: '寿司', romaji: 'sushi' },
-        { japanese: '聞く', romaji: 'kiku' },
-        { japanese: '世界', romaji: 'sekai' },
-        { japanese: '青', romaji: 'ao' },
-        { japanese: '硫黄', romaji: 'iou' },
-        { japanese: 'イカ', romaji: 'ika' },
-        { japanese: '菊', romaji: 'kiku' },
-        { japanese: '腰', romaji: 'kosi' },
-        { japanese: '過去', romaji: 'kako' },
-        { japanese: '刺し', romaji: 'sasi' },
-        { japanese: '指数', romaji: 'sisu' },
-        { japanese: '菓子', romaji: 'kasi' },
-        { japanese: '坂', romaji: 'saka' },
-        { japanese: '四季', romaji: 'siki' },
-        { japanese: '嘘', romaji: 'uso' },
-        { japanese: '基礎', romaji: 'kiso' },
-        { japanese: '草', romaji: 'kusa' },
-        { japanese: '消す', romaji: 'kesu' },
-        { japanese: '操作', romaji: 'sousa' },
-        { japanese: '秋', romaji: 'aki' },
-        { japanese: '好き', romaji: 'suki' },
-        { japanese: '椅子', romaji: 'isu' },
-        { japanese: '牛', romaji: 'usi' },
-        { japanese: '駅', romaji: 'eki' },
-        { japanese: '池', romaji: 'ike' },
-        { japanese: '桶', romaji: 'oke' },
-        { japanese: '貝', romaji: 'kai' },
-        { japanese: '柿', romaji: 'kaki' },
-        { japanese: '影', romaji: 'kage' },
-        { japanese: '貸し', romaji: 'kasi' },
-        { japanese: '茎', romaji: 'kuki' },
-        { japanese: '苔', romaji: 'koke' },
-        { japanese: '越し', romaji: 'kosi' },
-        { japanese: '柵', romaji: 'saku' },
-        { japanese: '鹿', romaji: 'sika' },
-        { japanese: '式', romaji: 'siki' },
-        { japanese: '敷く', romaji: 'siku' },
-        { japanese: '潮', romaji: 'sio' },
-        { japanese: '煤', romaji: 'susu' },
-        { japanese: '裾', romaji: 'suso' },
-        { japanese: '席', romaji: 'seki' },
-        { japanese: '底', romaji: 'soko' },
-        { japanese: '組織', romaji: 'sosiki' },
-        { japanese: '倉庫', romaji: 'souko' }
-    ],
-    normal: [
-        { japanese: '棚', romaji: 'tana' },
-        { japanese: '何', romaji: 'nani' },
-        { japanese: '立つ', romaji: 'tatsu' },
-        { japanese: '母', romaji: 'haha' },
-        { japanese: '耳', romaji: 'mimi' },
-        { japanese: '谷', romaji: 'tani' },
-        { japanese: '猫', romaji: 'neko' },
-        { japanese: '肉', romaji: 'niku' },
-        { japanese: '豆', romaji: 'mame' },
-        { japanese: '箸', romaji: 'hasi' },
-        { japanese: '旗', romaji: 'hata' },
-        { japanese: '服', romaji: 'huku' },
-        { japanese: '星', romaji: 'hosi' },
-        { japanese: '胸', romaji: 'mune' },
-        { japanese: '骨', romaji: 'hone' },
-        { japanese: '肩', romaji: 'kata' },
-        { japanese: '手', romaji: 'te' },
-        { japanese: '店', romaji: 'mise' },
-        { japanese: '紐', romaji: 'himo' },
-        { japanese: '布', romaji: 'nuno' },
-        { japanese: '山', romaji: 'yama' },
-        { japanese: '桜', romaji: 'sakura' },
-        { japanese: '川', romaji: 'kawa' },
-        { japanese: '夜', romaji: 'yoru' },
-        { japanese: '平和', romaji: 'heiwa' },
-        { japanese: '空', romaji: 'sora' },
-        { japanese: '海', romaji: 'umi' },
-        { japanese: '森', romaji: 'mori' },
-        { japanese: '冬', romaji: 'fuyu' },
-        { japanese: '夢', romaji: 'yume' },
-        { japanese: '歌', romaji: 'uta' },
-        { japanese: '庭', romaji: 'niwa' },
-        { japanese: '色', romaji: 'iro' },
-        { japanese: '鳥', romaji: 'tori' },
-        { japanese: '雲', romaji: 'kumo' },
-        { japanese: '池', romaji: 'ike' },
-        { japanese: '声', romaji: 'koe' },
-        { japanese: '猿', romaji: 'saru' },
-        { japanese: '船', romaji: 'hune' },
-        { japanese: '春', romaji: 'haru' }
-    ],
-    hard: [
-        { japanese: 'お茶', romaji: 'otya' }, { japanese: '医者', romaji: 'isya' }, { japanese: '会社', romaji: 'kaisya' },
-        { japanese: '客', romaji: 'kyaku' }, { japanese: '九州', romaji: 'kyuusyuu' }, { japanese: '住所', romaji: 'juusyo' },
-        { japanese: '著者', romaji: 'tyosya' }, { japanese: '辞書', romaji: 'jisyo' }, { japanese: '列車', romaji: 'ressya' },
-        { japanese: '過去', romaji: 'kako' }, { japanese: '勉強', romaji: 'benkyou' }, { japanese: '集中', romaji: 'syuutyuu' },
-        { japanese: '練習', romaji: 'rensyuu' }, { japanese: '執着', romaji: 'syuutyaku' }, { japanese: '余裕', romaji: 'yoyuu' },
-        { japanese: '記者', romaji: 'kisya' }, { japanese: '救急', romaji: 'kyuukyuu' }, { japanese: '除去', romaji: 'jokyo' },
-        { japanese: '首相', romaji: 'syusyou' }, { japanese: '業者', romaji: 'gyosya' }, { japanese: '拍手', romaji: 'hakusyu' },
-        { japanese: '写真', romaji: 'syasin' }, { japanese: '趣味', romaji: 'syumi' }, { japanese: '終点', romaji: 'syuuten' },
-        { japanese: '逆', romaji: 'gyaku' }, { japanese: '休暇', romaji: 'kyuuka' }, { japanese: '教授', romaji: 'kyouju' },
-        { japanese: '略語', romaji: 'ryakugo' }, { japanese: '昨夜', romaji: 'sakuya' }, { japanese: '宿題', romaji: 'syukudai' },
-        { japanese: '読書', romaji: 'dokusyo' }, { japanese: '特徴', romaji: 'tokutyou' }, { japanese: '視聴', romaji: 'sityou' },
-        { japanese: '描写', romaji: 'byousya' }, { japanese: '雪', romaji: 'yuki' }, { japanese: '雲', romaji: 'kumo' },
-        { japanese: '芋', romaji: 'imo' }, { japanese: '木', romaji: 'ki' }, { japanese: '門', romaji: 'mon' },
-        { japanese: '飲み', romaji: 'nomi' }, { japanese: '読み', romaji: 'yomi' }, { japanese: '海', romaji: 'umi' },
-        { japanese: '闇', romaji: 'yami' }, { japanese: '意味', romaji: 'imi' }, { japanese: '荷物', romaji: 'nimotsu' },
-        { japanese: '飲み物', romaji: 'nomimono' }, { japanese: '遺言', romaji: 'yuigon' }, { japanese: '膿', romaji: 'umi' },
-        { japanese: '桃', romaji: 'momo' }, { japanese: '濃い', romaji: 'koi' }, { japanese: '遺骨', romaji: 'ikotsu' },
-        { japanese: '向こう', romaji: 'mukou' }, { japanese: '耳', romaji: 'mimi' }, { japanese: '明日', romaji: 'ashita' },
-        { japanese: '汗', romaji: 'ase' }, { japanese: '餌', romaji: 'esa' }, { japanese: '枝', romaji: 'eda' },
-        { japanese: '腕', romaji: 'ude' }, { japanese: '宛て', romaji: 'ate' }, { japanese: '勝て', romaji: 'kate' },
-        { japanese: '捨て', romaji: 'sute' }, { japanese: 'さて', romaji: 'sate' }, { japanese: '座標', romaji: 'zahyou' },
-        { japanese: '下', romaji: 'shita' }, { japanese: 'ただ', romaji: 'tada' }, { japanese: 'デカ', romaji: 'deka' },
-        { japanese: '出せ', romaji: 'dase' }, { japanese: '鉄', romaji: 'tetsu' }, { japanese: '戦地', romaji: 'sentchi' },
-        { japanese: '世田谷', romaji: 'setagaya' }, { japanese: '赤道', romaji: 'sekidou' }, { japanese: '手続き', romaji: 'tetuzuki' },
-        { japanese: '徹底', romaji: 'tettei' }
-    ]
-};
+// 単語リストは words.js から読み込まれます
 
 // ローマ字変換マップ（完全対応）
 const romajiMap = {
@@ -418,7 +309,7 @@ const typingState = {
     currentInput: '',
     currentRomajiPatterns: [],
     currentCharIndex: 0,
-    possibleInputs: []
+    allPossibleRomaji: [] // 可能な全ローマ字パターンを保持
 };
 
 // 新しい単語を設定
@@ -426,22 +317,65 @@ function setNewWord() {
     const words = wordLists[gameState.difficulty];
     const randomWord = words[Math.floor(Math.random() * words.length)];
 
-    typingState.currentWord = randomWord;
+    // 読み（ふりがな）がある場合はそれを利用、無い場合はjapaneseをそのまま利用
+    const reading = randomWord.reading || randomWord.japanese;
+
+    typingState.currentWord = {
+        ...randomWord,
+        reading: reading
+    };
     typingState.currentInput = '';
-    typingState.currentCharIndex = 0;
-    typingState.possibleInputs = generatePossibleInputs(randomWord.romaji);
+
+    // 読みから全ての可能なローマ字パターンを生成
+    updatePossiblePatternsFromReading(reading);
 
     elements.targetWordJapanese.textContent = randomWord.japanese;
-    elements.targetWord.textContent = randomWord.romaji;
+    // デフォルトで最初のパターンを表示
+    elements.targetWord.textContent = typingState.allPossibleRomaji[0];
     elements.userInput.textContent = '';
     elements.feedback.textContent = '';
 }
 
-// 可能な入力パターンを生成
-function generatePossibleInputs(romaji) {
-    // 基本的には入力されたromajiをそのまま使用
-    return [romaji];
+// 読み（ひらがな）から全ての可能なローマ字パターンを作成
+function updatePossiblePatternsFromReading(reading) {
+    let patterns = [''];
+    let i = 0;
+
+    while (i < reading.length) {
+        let found = false;
+        // 2文字（拗音など）のチェック
+        if (i + 1 < reading.length) {
+            const twoChars = reading.substring(i, i + 2);
+            if (romajiMap[twoChars]) {
+                const variants = romajiMap[twoChars];
+                let newPatterns = [];
+                for (let p of patterns) {
+                    for (let v of variants) {
+                        newPatterns.push(p + v);
+                    }
+                }
+                patterns = newPatterns;
+                i += 2;
+                found = true;
+            }
+        }
+
+        if (!found) {
+            const oneChar = reading[i];
+            const variants = romajiMap[oneChar] || [oneChar];
+            let newPatterns = [];
+            for (let p of patterns) {
+                for (let v of variants) {
+                    newPatterns.push(p + v);
+                }
+            }
+            patterns = newPatterns;
+            i++;
+        }
+    }
+    typingState.allPossibleRomaji = patterns;
 }
+
 
 // 1文字正解時の報酬を計算
 function getCharValue() {
@@ -451,55 +385,23 @@ function getCharValue() {
 }
 
 // 1文字入力を処理
+// 1文字入力を処理
 function handleChar(char) {
-    const targetRomaji = typingState.currentWord.romaji;
-    const newInput = typingState.currentInput + char;
+    const inputSoFar = typingState.currentInput + char;
 
-    let isCorrect = false;
+    // 現在の入力で始まる可能性のあるローマ字パターンをフィルタリング
+    const validPatterns = typingState.allPossibleRomaji.filter(p => p.startsWith(inputSoFar));
 
-    // 1. 完全一致チェック
-    if (targetRomaji.startsWith(newInput)) {
-        isCorrect = true;
-    } else {
-        // 2. 特殊パターン代替チェック (si/shi, zi/ji など)
-        const remaining = targetRomaji.substring(typingState.currentInput.length);
-        const alternates = {
-            'shi': 'si', 'si': 'shi',
-            'chi': 'ti', 'ti': 'chi',
-            'tsu': 'tu', 'tu': 'tsu',
-            'fu': 'hu', 'hu': 'fu',
-            'ji': 'zi', 'zi': 'ji',
-            'sha': 'sya', 'sya': 'sha',
-            'shu': 'syu', 'syu': 'shu',
-            'sho': 'syo', 'syo': 'sho',
-            'ja': 'zya', 'zya': 'ja',
-            'ju': 'zyu', 'zyu': 'ju',
-            'jo': 'zyo', 'zyo': 'jo'
-        };
-
-        for (let key in alternates) {
-            if (remaining.startsWith(key)) {
-                const altRemaining = alternates[key] + remaining.substring(key.length);
-                if (altRemaining.startsWith(char)) {
-                    isCorrect = true;
-                    // 正解とするために、ターゲット単語のromaji自体を書き換えて一貫性を保つ
-                    typingState.currentWord.romaji = typingState.currentInput + altRemaining;
-                    elements.targetWord.textContent = typingState.currentWord.romaji;
-                    break;
-                }
-            }
-        }
-    }
-
-    if (isCorrect) {
+    if (validPatterns.length > 0) {
         // 正解！
-        typingState.currentInput = typingState.currentInput + char;
+        typingState.currentInput = inputSoFar;
         gameState.combo++;
 
-        // お金獲得・電力回復
-        let charValue = getCharValue();
+        // 代表的な有効なパターンをUIに表示
+        typingState.currentWord.romaji = validPatterns[0];
+        elements.targetWord.textContent = typingState.currentWord.romaji;
 
-        // フィーバー中なら倍増（アップグレード反映）
+        let charValue = getCharValue();
         if (gameState.isFever) {
             const feverMult = upgradeConfig.comboMultiplier.getEffect(gameState.upgrades.comboMultiplier || 0);
             charValue *= feverMult;
@@ -509,38 +411,30 @@ function handleChar(char) {
         gameState.sessionEarnings += charValue;
         gameState.correctChars++;
 
-        // フィーバーチェック (10コンボで発動)
         if (gameState.combo >= 10 && !gameState.isFever) {
             startFever();
         }
 
-        // 電力回復 (+0.5%)
         gameState.energy = Math.min(100, gameState.energy + 0.5);
         updateEnergyUI();
 
-        // フィードバック
-        elements.feedback.textContent = `+${Math.floor(charValue)}円！ ${gameState.combo} Combo!`;
-        elements.feedback.style.color = difficultyConfig[gameState.difficulty].color;
+        elements.feedback.textContent = `+${Math.floor(charValue)}`;
+        elements.comboDisplay.textContent = `${gameState.combo} Combo`;
         elements.userInput.textContent = typingState.currentInput;
-
-        // 所持金をリアルタイム更新
         elements.moneyValue.textContent = formatMoney(Math.floor(gameState.money));
 
-        // パーティクル
         createParticle(window.innerWidth / 2, window.innerHeight / 2, '💰');
 
         // 単語完成チェック
-        if (typingState.currentInput === typingState.currentWord.romaji) {
+        if (validPatterns.some(p => p === typingState.currentInput)) {
             gameState.totalWords++;
             const bonus = Math.floor(charValue * 2);
-            elements.feedback.textContent = `単語完成！ +${bonus}円ボーナス！`;
+            elements.feedback.textContent = `単語完成! +${bonus}`;
 
-            // ボーナスも即座に加算
             gameState.money += bonus;
             gameState.sessionEarnings += bonus;
             elements.moneyValue.textContent = formatMoney(Math.floor(gameState.money));
 
-            // 次の単語へ
             setTimeout(() => {
                 setNewWord();
             }, 200);
@@ -550,7 +444,8 @@ function handleChar(char) {
     } else {
         // ミス！
         gameState.combo = 0;
-        elements.feedback.textContent = 'ミス！コンボ途切れた！';
+        elements.comboDisplay.textContent = `0 Combo`;
+        elements.feedback.textContent = 'MISS!';
         elements.feedback.style.color = '#ff4444';
     }
 }
@@ -625,6 +520,9 @@ function startSession() {
     gameState.sessionEarnings = 0; // ゼロからスタート
     gameState.correctChars = 0;
     gameState.totalWords = 0;
+    gameState.combo = 0;
+    if (elements.comboDisplay) elements.comboDisplay.textContent = '0 Combo';
+    if (elements.feedback) elements.feedback.textContent = '';
 
     elements.startButton.textContent = 'タイピング中...';
     elements.startButton.disabled = true;
@@ -780,17 +678,21 @@ function updateShopDisplay() {
 // UI更新関数
 // =====================
 function updateUI() {
-    elements.moneyValue.textContent = formatMoney(gameState.money);
+    const moneyText = formatMoney(Math.floor(gameState.money));
+    elements.moneyValue.textContent = moneyText;
+    if (elements.shopMoneyValue) elements.shopMoneyValue.textContent = moneyText;
+
     elements.charValue.textContent = getCharValue() + '円/文字';
     elements.productionValue.textContent = formatMoney(Math.floor(gameState.totalProduction)) + '/秒';
     updateInventoryDisplay();
 }
 
 function updateSessionUI() {
-    elements.moneyValue.textContent = formatMoney(gameState.money);
+    const moneyText = formatMoney(Math.floor(gameState.money));
+    elements.moneyValue.textContent = moneyText;
+    if (elements.shopMoneyValue) elements.shopMoneyValue.textContent = moneyText;
+
     elements.sessionEarnings.textContent = formatMoney(gameState.sessionEarnings);
-    elements.correctChars.textContent = gameState.correctChars;
-    elements.totalWords.textContent = gameState.totalWords;
 }
 
 function updateInventoryDisplay() {
