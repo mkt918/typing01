@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍣 Sushi Typer Factory</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <!-- Header: 所持金・タイマー -->
     <header class="game-header">
@@ -18,6 +20,13 @@
             <div id="timerValue" class="timer-value">60秒</div>
             <div class="timer-bar-wrapper">
                 <div id="timerBar" class="timer-bar" style="width: 100%;"></div>
+            </div>
+        </div>
+        <div class="energy-container">
+            <div class="energy-label">⚡ 工場電力</div>
+            <div id="energyValueText" class="energy-value-text">100%</div>
+            <div class="energy-bar-wrapper">
+                <div id="energyBar" class="energy-bar overdrive" style="width: 100%;"></div>
             </div>
         </div>
         <div class="stats">
@@ -123,4 +132,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>

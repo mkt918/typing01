@@ -104,6 +104,67 @@ body {
     background: linear-gradient(90deg, #ff4444 0%, #ff8800 100%);
 }
 
+.energy-container {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.energy-label {
+    font-size: 14px;
+    color: #aaa;
+    margin-bottom: 5px;
+}
+
+.energy-value-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: #00d4ff;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+}
+
+.energy-bar-wrapper {
+    width: 100%;
+    max-width: 400px;
+    height: 12px;
+    background-color: #16213e;
+    border-radius: 10px;
+    border: 1px solid #0f3460;
+    overflow: hidden;
+    margin: 10px auto 0;
+}
+
+.energy-bar {
+    height: 100%;
+    transition: width 0.3s ease, background 0.3s ease;
+    border-radius: 10px;
+}
+
+.energy-bar.overdrive {
+    background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+}
+
+.energy-bar.normal {
+    background: linear-gradient(90deg, #00ff88 0%, #ffaa00 100%);
+}
+
+.energy-bar.low {
+    background: linear-gradient(90deg, #ffaa00 0%, #ff4444 100%);
+    animation: energy-pulse 1s infinite;
+}
+
+@keyframes energy-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
 .stats {
     display: flex;
     justify-content: space-around;
@@ -180,8 +241,15 @@ body {
 }
 
 @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-20px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
 }
 
 .difficulty-selector {
@@ -314,8 +382,17 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.05); opacity: 0.9; }
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
 }
 
 /* =====================
@@ -451,45 +528,229 @@ body {
     margin-bottom: 15px;
 }
 
-.shop-item-cost {
-    font-size: 18px;
-    color: #ffaa00;
-    margin-bottom: 15px;
+/* ガチャUI */
+.gacha-container {
+    background: rgba(15, 52, 96, 0.4);
+    padding: 30px;
+    border-radius: 20px;
+    border: 2px dashed #00d4ff;
+    text-align: center;
+    width: 100%;
 }
 
-.shop-item-owned {
-    font-size: 14px;
-    color: #aaa;
-    margin-bottom: 15px;
+.gacha-description {
+    font-size: 18px;
+    color: #eee;
+    margin-bottom: 20px;
 }
 
-.buy-button {
-    font-size: 18px;
+.gacha-cost {
+    font-size: 24px;
     font-weight: bold;
-    padding: 12px 30px;
+    color: #ffaa00;
+    margin-bottom: 25px;
+}
+
+.gacha-button {
+    font-size: 28px;
+    font-weight: bold;
+    padding: 20px 50px;
     background: linear-gradient(135deg, #e94560 0%, #ff6b88 100%);
     color: #fff;
     border: none;
-    border-radius: 10px;
+    border-radius: 15px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 3px 15px rgba(233, 69, 96, 0.5);
+    transition: all 0.2s;
+    box-shadow: 0 5px 20px rgba(233, 69, 96, 0.5);
     font-family: 'Courier New', monospace;
 }
 
-.buy-button:hover:not(:disabled) {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 20px rgba(233, 69, 96, 0.7);
+.gacha-button:hover:not(:disabled) {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 8px 30px rgba(233, 69, 96, 0.7);
 }
 
-.buy-button:active:not(:disabled) {
-    transform: translateY(0);
-}
-
-.buy-button:disabled {
+.gacha-button:disabled {
     background: #555;
     cursor: not-allowed;
     box-shadow: none;
+}
+
+.gacha-result-area {
+    margin-top: 30px;
+    min-height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.gacha-animation {
+    font-size: 24px;
+    color: #00ff88;
+    animation: bounce 0.5s infinite alternate;
+}
+
+@keyframes bounce {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-10px);
+    }
+}
+
+.gacha-result-card {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 25px;
+    border-radius: 15px;
+    border: 3px solid #fff;
+    width: 250px;
+    position: relative;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.rarity-badge {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    padding: 5px 15px;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 18px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.result-emoji {
+    font-size: 64px;
+    margin-bottom: 10px;
+}
+
+.result-name {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.result-production {
+    font-size: 16px;
+    color: #00ff88;
+    font-weight: bold;
+}
+
+/* レア度別スタイル */
+.n {
+    border-color: #888;
+}
+
+.n .rarity-badge {
+    background: #888;
+    color: #fff;
+}
+
+.r {
+    border-color: #00d4ff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+}
+
+.r .rarity-badge {
+    background: #00d4ff;
+    color: #1a1a2e;
+}
+
+.sr {
+    border-color: #ffaa00;
+    box-shadow: 0 0 20px rgba(255, 170, 0, 0.6);
+}
+
+.sr .rarity-badge {
+    background: #ffaa00;
+    color: #1a1a2e;
+}
+
+.ssr {
+    border-color: #e94560;
+    box-shadow: 0 0 25px rgba(233, 69, 96, 0.7);
+    animation: rainbow 2s infinite linear;
+}
+
+.ssr .rarity-badge {
+    background: #e94560;
+    color: #fff;
+}
+
+.ur {
+    border-color: #ff00ff;
+    box-shadow: 0 0 35px rgba(255, 0, 255, 0.8);
+    animation: ur-glow 1s infinite alternate;
+}
+
+.ur .rarity-badge {
+    background: #ff00ff;
+    color: #fff;
+}
+
+@keyframes rainbow {
+    0% {
+        filter: hue-rotate(0deg);
+    }
+
+    100% {
+        filter: hue-rotate(360deg);
+    }
+}
+
+@keyframes ur-glow {
+    from {
+        box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+    }
+
+    to {
+        box-shadow: 0 0 50px rgba(255, 0, 255, 1);
+    }
+}
+
+/* インベントリ用のミニバッジ */
+.rarity-badge-mini {
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.inventory-item.n .rarity-badge-mini {
+    background: #888;
+}
+
+.inventory-item.r .rarity-badge-mini {
+    background: #00d4ff;
+    color: #1a1a2e;
+}
+
+.inventory-item.sr .rarity-badge-mini {
+    background: #ffaa00;
+    color: #1a1a2e;
+}
+
+.inventory-item.ssr .rarity-badge-mini {
+    background: #e94560;
+}
+
+.inventory-item.ur .rarity-badge-mini {
+    background: #ff00ff;
 }
 
 .back-button {
@@ -641,6 +902,7 @@ body {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
+
     100% {
         opacity: 0;
         transform: translateY(-100px) scale(0.5);
