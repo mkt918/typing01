@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍣 Sushi Typer Factory</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header: 所持金・電力バー -->
+    <header class="game-header">
+        <div class="money-display">
+            <div class="money-label">💰 所持金</div>
+            <div id="moneyValue" class="money-value">0円</div>
+        </div>
+        <div class="energy-container">
+            <div class="energy-label">⚡ 電力</div>
+            <div class="energy-bar-wrapper">
+                <div id="energyBar" class="energy-bar" style="width: 100%;"></div>
+                <div id="energyText" class="energy-text">100%</div>
+            </div>
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">毎秒生産:</span>
+                <span id="productionValue" class="stat-value">0円/秒</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">WPM記録:</span>
+                <span id="wpmValue" class="stat-value">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main: タイピングエリア -->
+    <main class="game-main">
+        <div class="sushi-display">
+            <div class="sushi-emoji">🍣</div>
+        </div>
+
+        <div class="typing-area">
+            <div id="targetWord" class="target-word">準備中...</div>
+            <div id="userInput" class="user-input"></div>
+            <div id="feedback" class="feedback"></div>
+        </div>
+
+        <div class="combo-display">
+            <div id="comboCounter" class="combo-counter">Combo: 0</div>
+            <div id="feverMode" class="fever-mode hidden">🔥 FEVER MODE 🔥</div>
+        </div>
+    </main>
+
+    <!-- Footer: ガチャ・インベントリ -->
+    <footer class="game-footer">
+        <div class="gacha-section">
+            <button id="gachaButton" class="gacha-button">
+                🎁 ガチャを回す
+                <span id="gachaCost" class="gacha-cost">(コスト: 1000円)</span>
+            </button>
+        </div>
+
+        <div class="inventory-section">
+            <h3 class="inventory-title">🏭 所持設備</h3>
+            <div id="inventoryList" class="inventory-list">
+                <div class="inventory-empty">まだ設備がありません。ガチャを回してね！</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- パーティクルコンテナ -->
+    <div id="particleContainer" class="particle-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
