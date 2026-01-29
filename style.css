@@ -17,8 +17,12 @@ body {
     flex-direction: column;
 }
 
+.hidden {
+    display: none !important;
+}
+
 /* =====================
-   Header: 所持金・電力
+   Header: 所持金・タイマー
    ===================== */
 .game-header {
     background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
@@ -46,53 +50,32 @@ body {
     letter-spacing: 2px;
 }
 
-.energy-container {
+.timer-container {
+    text-align: center;
     margin-bottom: 15px;
 }
 
-.energy-label {
+.timer-label {
     font-size: 14px;
     color: #aaa;
     margin-bottom: 5px;
 }
 
-.energy-bar-wrapper {
-    position: relative;
-    width: 100%;
-    height: 30px;
-    background-color: #16213e;
-    border-radius: 15px;
-    border: 2px solid #0f3460;
-    overflow: hidden;
-}
-
-.energy-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
-    transition: width 0.3s ease, background 0.3s ease;
-    border-radius: 15px;
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
-}
-
-.energy-bar.low {
-    background: linear-gradient(90deg, #ff4444 0%, #ff8800 100%);
-    box-shadow: 0 0 15px rgba(255, 68, 68, 0.6);
-}
-
-.energy-bar.normal {
-    background: linear-gradient(90deg, #ffaa00 0%, #ffdd00 100%);
-    box-shadow: 0 0 15px rgba(255, 170, 0, 0.6);
-}
-
-.energy-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 14px;
+.timer-value {
+    font-size: 36px;
     font-weight: bold;
-    color: #fff;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.8);
+}
+
+.timer-value.warning {
+    color: #ffaa00;
+    animation: pulse 0.5s ease-in-out infinite;
+}
+
+.timer-value.danger {
+    color: #ff4444;
+    animation: pulse 0.3s ease-in-out infinite;
 }
 
 .stats {
@@ -128,6 +111,14 @@ body {
     position: relative;
 }
 
+.typing-mode {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 800px;
+}
+
 .sushi-display {
     margin-bottom: 30px;
 }
@@ -146,72 +137,220 @@ body {
     text-align: center;
     max-width: 600px;
     width: 100%;
+    margin-bottom: 30px;
 }
 
 .target-word {
-    font-size: 42px;
+    font-size: 48px;
     font-weight: bold;
     color: #00ff88;
     margin-bottom: 20px;
     letter-spacing: 5px;
     text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+    min-height: 60px;
 }
 
 .user-input {
-    font-size: 36px;
+    font-size: 42px;
     color: #00d4ff;
-    min-height: 50px;
+    min-height: 55px;
     margin-bottom: 15px;
     letter-spacing: 3px;
     text-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
 }
 
 .feedback {
-    font-size: 18px;
-    min-height: 30px;
+    font-size: 24px;
+    min-height: 35px;
     color: #ffdd00;
+    font-weight: bold;
 }
 
-.combo-display {
-    margin-top: 30px;
+.typing-stats {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 30px;
+}
+
+.stat-box {
+    background: rgba(15, 52, 96, 0.5);
+    padding: 20px 40px;
+    border-radius: 15px;
+    border: 2px solid #0f3460;
     text-align: center;
 }
 
-.combo-counter {
-    font-size: 24px;
-    color: #ffaa00;
-    font-weight: bold;
-}
-
-.fever-mode {
+.stat-number {
     font-size: 36px;
-    color: #ff4444;
     font-weight: bold;
-    margin-top: 10px;
-    animation: pulse 0.5s ease-in-out infinite;
+    color: #00ff88;
+    margin-bottom: 5px;
 }
 
-.fever-mode.hidden {
-    display: none;
+.stat-label-small {
+    font-size: 14px;
+    color: #aaa;
+}
+
+.start-button {
+    font-size: 32px;
+    font-weight: bold;
+    padding: 20px 60px;
+    background: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 5px 20px rgba(0, 255, 136, 0.5);
+    font-family: 'Courier New', monospace;
+}
+
+.start-button:hover:not(:disabled) {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 255, 136, 0.7);
+}
+
+.start-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.start-button:disabled {
+    background: #555;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 @keyframes pulse {
     0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.8; }
-}
-
-/* Fever Mode背景 */
-body.fever {
-    animation: feverBg 0.5s ease-in-out infinite;
-}
-
-@keyframes feverBg {
-    0%, 100% { background-color: #1a1a2e; }
-    50% { background-color: #2a1a3e; }
+    50% { transform: scale(1.05); opacity: 0.9; }
 }
 
 /* =====================
-   Footer: ガチャ・インベントリ
+   ショップモード
+   ===================== */
+.shop-mode {
+    width: 100%;
+    max-width: 900px;
+}
+
+.shop-title {
+    font-size: 36px;
+    color: #00ff88;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.shop-description {
+    text-align: center;
+    font-size: 16px;
+    color: #aaa;
+    margin-bottom: 30px;
+}
+
+.shop-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.shop-item {
+    background: rgba(15, 52, 96, 0.5);
+    padding: 20px;
+    border-radius: 15px;
+    border: 2px solid #0f3460;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.shop-item:hover {
+    transform: translateY(-5px);
+    border-color: #e94560;
+}
+
+.shop-item-emoji {
+    font-size: 64px;
+    margin-bottom: 10px;
+}
+
+.shop-item-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.shop-item-production {
+    font-size: 16px;
+    color: #00ff88;
+    margin-bottom: 15px;
+}
+
+.shop-item-cost {
+    font-size: 18px;
+    color: #ffaa00;
+    margin-bottom: 15px;
+}
+
+.shop-item-owned {
+    font-size: 14px;
+    color: #aaa;
+    margin-bottom: 15px;
+}
+
+.buy-button {
+    font-size: 18px;
+    font-weight: bold;
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #e94560 0%, #ff6b88 100%);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 3px 15px rgba(233, 69, 96, 0.5);
+    font-family: 'Courier New', monospace;
+}
+
+.buy-button:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 20px rgba(233, 69, 96, 0.7);
+}
+
+.buy-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.buy-button:disabled {
+    background: #555;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.back-button {
+    display: block;
+    margin: 0 auto;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 15px 40px;
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+    color: #00ff88;
+    border: 2px solid #00ff88;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    font-family: 'Courier New', monospace;
+}
+
+.back-button:hover {
+    transform: translateY(-3px);
+}
+
+/* =====================
+   Footer: インベントリ
    ===================== */
 .game-footer {
     background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
@@ -220,50 +359,9 @@ body.fever {
     box-shadow: 0 -4px 10px rgba(233, 69, 96, 0.3);
 }
 
-.gacha-section {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.gacha-button {
-    font-size: 28px;
-    font-weight: bold;
-    padding: 20px 40px;
-    background: linear-gradient(135deg, #e94560 0%, #ff6b88 100%);
-    color: #fff;
-    border: none;
-    border-radius: 15px;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 5px 20px rgba(233, 69, 96, 0.5);
-    font-family: 'Courier New', monospace;
-}
-
-.gacha-button:hover:not(:disabled) {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(233, 69, 96, 0.7);
-}
-
-.gacha-button:active:not(:disabled) {
-    transform: translateY(0);
-}
-
-.gacha-button:disabled {
-    background: #555;
-    cursor: not-allowed;
-    box-shadow: none;
-}
-
-.gacha-cost {
-    display: block;
-    font-size: 16px;
-    margin-top: 5px;
-    opacity: 0.9;
-}
-
 .inventory-section {
     max-width: 800px;
-    margin: 0 auto;
+    margin: 0 auto 20px auto;
 }
 
 .inventory-title {
@@ -274,7 +372,7 @@ body.fever {
 }
 
 .inventory-list {
-    max-height: 200px;
+    max-height: 150px;
     overflow-y: auto;
     background-color: rgba(22, 33, 62, 0.5);
     border-radius: 10px;
@@ -297,12 +395,6 @@ body.fever {
     align-items: center;
     justify-content: space-between;
     border: 1px solid rgba(233, 69, 96, 0.3);
-    transition: transform 0.2s;
-}
-
-.inventory-item:hover {
-    transform: translateX(5px);
-    border-color: rgba(233, 69, 96, 0.6);
 }
 
 .item-info {
@@ -326,50 +418,40 @@ body.fever {
     color: #fff;
 }
 
-.item-rarity {
+.item-count {
     font-size: 12px;
-    padding: 2px 8px;
-    border-radius: 5px;
-    display: inline-block;
-    margin-top: 3px;
-}
-
-.item-rarity.N {
-    background-color: #888;
-    color: #fff;
-}
-
-.item-rarity.R {
-    background-color: #4488ff;
-    color: #fff;
-}
-
-.item-rarity.SR {
-    background-color: #ff44ff;
-    color: #fff;
-}
-
-.item-rarity.SSR {
-    background-color: #ffaa00;
-    color: #000;
-}
-
-.item-rarity.UR {
-    background: linear-gradient(135deg, #ff0000 0%, #ffdd00 100%);
-    color: #fff;
-    font-weight: bold;
-    animation: rainbow 2s ease-in-out infinite;
-}
-
-@keyframes rainbow {
-    0%, 100% { filter: hue-rotate(0deg); }
-    50% { filter: hue-rotate(360deg); }
+    color: #aaa;
 }
 
 .item-production {
     font-size: 14px;
     color: #00ff88;
     font-weight: bold;
+}
+
+.shop-button {
+    display: block;
+    margin: 0 auto;
+    font-size: 24px;
+    font-weight: bold;
+    padding: 15px 50px;
+    background: linear-gradient(135deg, #e94560 0%, #ff6b88 100%);
+    color: #fff;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 5px 20px rgba(233, 69, 96, 0.5);
+    font-family: 'Courier New', monospace;
+}
+
+.shop-button:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(233, 69, 96, 0.7);
+}
+
+.shop-button:active {
+    transform: translateY(0);
 }
 
 /* =====================
@@ -411,25 +493,49 @@ body.fever {
         font-size: 32px;
     }
 
+    .timer-value {
+        font-size: 28px;
+    }
+
     .sushi-emoji {
         font-size: 80px;
     }
 
     .target-word {
-        font-size: 28px;
+        font-size: 32px;
     }
 
     .user-input {
-        font-size: 24px;
+        font-size: 28px;
     }
 
-    .gacha-button {
-        font-size: 20px;
-        padding: 15px 30px;
+    .feedback {
+        font-size: 18px;
+    }
+
+    .start-button {
+        font-size: 24px;
+        padding: 15px 40px;
     }
 
     .stats {
         flex-direction: column;
         gap: 5px;
+    }
+
+    .typing-stats {
+        gap: 20px;
+    }
+
+    .stat-box {
+        padding: 15px 25px;
+    }
+
+    .stat-number {
+        font-size: 28px;
+    }
+
+    .shop-list {
+        grid-template-columns: 1fr;
     }
 }
