@@ -234,6 +234,7 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 5px;
+    position: relative;
 }
 
 .feedback-container {
@@ -241,6 +242,7 @@ body {
     align-items: center;
     gap: 20px;
     height: 30px;
+    width: 100%;
 }
 
 .money-display-main {
@@ -261,13 +263,22 @@ body {
 }
 
 .combo-display {
-    font-size: 24px;
+    position: absolute;
+    top: -15px;
+    right: -60px;
+    /* 右側にオフセット */
+    min-width: 140px;
+    font-size: 18px;
     font-weight: bold;
     color: #00d4ff;
-    background: rgba(0, 212, 255, 0.1);
-    padding: 2px 15px;
-    border-radius: 20px;
-    border: 1px solid rgba(0, 212, 255, 0.3);
+    background: rgba(0, 212, 255, 0.15);
+    padding: 4px 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+    white-space: nowrap;
+    z-index: 10;
+    text-align: center;
 }
 
 .sushi-emoji {

@@ -29,7 +29,6 @@
         <div class="header-right">
             <div class="stats-compact">
                 <span>単価: <span id="charValue">10円</span></span>
-                <span>生産: <span id="productionValue">0円/分</span></span>
             </div>
             <button id="resetButton" class="reset-button-mini">🔄</button>
         </div>
@@ -54,14 +53,20 @@
 
             <!-- 難易度選択 -->
             <div class="difficulty-selector">
-                <button id="difficultyEasy" class="difficulty-button active" data-difficulty="easy">
-                    簡単 (×1.0)
+                <button id="difficultyLevel1" class="difficulty-button active" data-difficulty="easy">
+                    レベル1 (×1.0)
                 </button>
-                <button id="difficultyNormal" class="difficulty-button" data-difficulty="normal">
-                    普通 (×1.5)
+                <button id="difficultyLevel2" class="difficulty-button" data-difficulty="normal">
+                    レベル2 (×1.5)
                 </button>
-                <button id="difficultyHard" class="difficulty-button" data-difficulty="hard">
-                    難しい (×2.0)
+                <button id="difficultyLevel3" class="difficulty-button" data-difficulty="hard">
+                    レベル3 (×2.0)
+                </button>
+                <button id="difficultyLevel4" class="difficulty-button" data-difficulty="level4">
+                    レベル4 (×3.0)
+                </button>
+                <button id="difficultyLevel5" class="difficulty-button" data-difficulty="level5">
+                    レベル5 (×5.0)
                 </button>
             </div>
 
@@ -95,25 +100,11 @@
                 <div id="upgradeList" class="upgrade-list"></div>
             </div>
 
-            <!-- 設備セクション -->
-            <div class="shop-section">
-                <h3 class="section-title">🏭 自動生産設備</h3>
-                <div class="shop-description">
-                    設備を購入すると、次回から自動的にお金が増えます！
-                </div>
-                <div id="shopList" class="shop-list"></div>
-            </div>
         </div>
     </main>
 
-    <!-- Footer: インベントリ -->
+    <!-- Footer -->
     <footer class="game-footer">
-        <div class="inventory-section">
-            <h3 class="inventory-title">📦 所持設備</h3>
-            <div id="inventoryList" class="inventory-list">
-                <div class="inventory-empty">まだ設備がありません</div>
-            </div>
-        </div>
         <button id="openShop" class="shop-button">🛒 ショップを開く</button>
     </footer>
 

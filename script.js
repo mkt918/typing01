@@ -4,24 +4,19 @@
 const gameState = {
     money: 0,                   // 所持金
     sessionEarnings: 0,         // 今回のセッションで稼いだ金額
-    totalProduction: 0,         // 設備による自動生産額（毎分）
-    inventory: {},              // 所持設備 { itemId: count }
     upgrades: {                 // アップグレードレベル
         charValue: 0,           // 文字単価レベル
         timeLimit: 0,           // 制限時間レベル
         comboMultiplier: 0,     // フィーバー倍率レベル
-        unlockNormal: 0,        // 普通モード解放 (0 or 1)
-        unlockHard: 0           // 難しいモード解放 (0 or 1)
+        unlockLevel2: 0,        // レベル2解放
+        unlockLevel3: 0,        // レベル3解放
+        unlockLevel4: 0,        // レベル4解放
+        unlockLevel5: 0         // レベル5解放
     },
     difficulty: 'easy',         // 現在の難易度
-    correctChars: 0,            // 今回のセッションの正解文字数
-    totalWords: 0,              // 今回のセッションの完成単語数
     isPlaying: false,           // タイピング中かどうか
     timeRemaining: 30,          // 残り時間（秒）
     maxTime: 30,                // 最大時間（秒）
-    energy: 100,                // 工場の電力 0.0〜100.0
-    lastProductionTime: Date.now(),
-    lastEnergyUpdateTime: Date.now(),
     combo: 0,                   // コンボ数
     isFever: false,             // フィーバーモード中かどうか
     feverEndTime: 0             // フィーバー終了時刻
@@ -34,7 +29,6 @@ const elements = {
     timerBar: document.getElementById('timerBar'),
     sessionEarnings: document.getElementById('sessionEarnings'),
     charValue: document.getElementById('charValue'),
-    productionValue: document.getElementById('productionValue'),
     targetWordJapanese: document.getElementById('targetWordJapanese'),
     targetWord: document.getElementById('targetWord'),
     userInput: document.getElementById('userInput'),
@@ -44,83 +38,19 @@ const elements = {
     typingMode: document.getElementById('typingMode'),
     shopMode: document.getElementById('shopMode'),
     upgradeList: document.getElementById('upgradeList'),
-    shopList: document.getElementById('shopList'),
-    inventoryList: document.getElementById('inventoryList'),
     openShop: document.getElementById('openShop'),
     backToTyping: document.getElementById('backToTypingUpper'),
     shopMoneyValue: document.getElementById('shopMoneyValue'),
     resetButton: document.getElementById('resetButton'),
     particleContainer: document.getElementById('particleContainer'),
-    difficultyEasy: document.getElementById('difficultyEasy'),
-    difficultyNormal: document.getElementById('difficultyNormal'),
-    difficultyHard: document.getElementById('difficultyHard'),
-    energyBar: document.getElementById('energyBar'),
-    energyValueText: document.getElementById('energyValueText')
+    difficultyLevel1: document.getElementById('difficultyLevel1'),
+    difficultyLevel2: document.getElementById('difficultyLevel2'),
+    difficultyLevel3: document.getElementById('difficultyLevel3'),
+    difficultyLevel4: document.getElementById('difficultyLevel4'),
+    difficultyLevel5: document.getElementById('difficultyLevel5')
 };
 
-// =====================
-// リアルタイム所持金更新
-// =====================
-// =====================
-// リアルタイム所持金・電力更新
-// =====================
-function getProductionMultiplier() {
-    if (gameState.energy >= 80) return 2.0;
-    if (gameState.energy >= 20) return 1.0;
-    return 0.1;
-}
 
-function updateEnergy() {
-    const now = Date.now();
-    const deltaSeconds = (now - gameState.lastEnergyUpdateTime) / 1000;
-
-    // 毎秒 2% 減少
-    gameState.energy = Math.max(0, gameState.energy - (2.0 * deltaSeconds));
-    gameState.lastEnergyUpdateTime = now;
-
-    updateEnergyUI();
-}
-
-function updateMoneyRealtime() {
-    updateEnergy();
-
-    if (gameState.totalProduction > 0) {
-        const now = Date.now();
-        const deltaSeconds = (now - gameState.lastProductionTime) / 1000;
-
-        // 毎秒の生産額
-        const productionPerSecond = gameState.totalProduction;
-        const multiplier = getProductionMultiplier();
-        const earned = productionPerSecond * deltaSeconds * multiplier;
-
-        if (earned > 0) {
-            gameState.money += earned;
-            gameState.lastProductionTime = now;
-            elements.moneyValue.textContent = formatMoney(Math.floor(gameState.money));
-        }
-    }
-
-    // フィーバー終了チェック
-    if (gameState.isFever && Date.now() > gameState.feverEndTime) {
-        endFever();
-    }
-
-    requestAnimationFrame(updateMoneyRealtime);
-}
-
-function startFever() {
-    gameState.isFever = true;
-    gameState.feverEndTime = Date.now() + 10000; // 10秒間
-    document.body.classList.add('fever-mode');
-    elements.feedback.textContent = '🔥 FEVER MODE!!! 🔥';
-    elements.feedback.style.color = '#ff00ff';
-}
-
-function endFever() {
-    gameState.isFever = false;
-    document.body.classList.remove('fever-mode');
-    elements.feedback.textContent = 'Fever終了';
-}
 
 // =====================
 // 数値フォーマット
@@ -152,31 +82,49 @@ const upgradeConfig = {
         getDescription: (level) => `${30 + (level * 2)}秒 → ${30 + ((level + 1) * 2)}秒`
     },
     comboMultiplier: {
-        name: 'コンボ集中力',
+        name: 'コンボレベル解放',
         icon: '🔥',
-        maxLevel: 20,
+        maxLevel: 10,
         baseCost: 500,
-        costMultiplier: 1.5,
-        getEffect: (level) => 2.0 + (level * 0.1),
-        getDescription: (level) => `フィーバー倍率 ${(2.0 + level * 0.1).toFixed(1)}倍 → ${(2.0 + (level + 1) * 0.1).toFixed(1)}倍`
+        costMultiplier: 2.0,
+        getEffect: (level) => level, // 到達可能な最大レベル
+        getDescription: (level) => `最大フィーバーレベル Lv.${level} → Lv.${level + 1}`
     },
-    unlockNormal: {
-        name: '難易度「普通」解放',
+    unlockLevel2: {
+        name: '難易度「レベル2」解放',
         icon: '🔓',
         maxLevel: 1,
         baseCost: 5000,
         costMultiplier: 1,
         getEffect: (level) => level > 0,
-        getDescription: (level) => level > 0 ? '解放済み' : '「普通 (×1.5)」を解放します'
+        getDescription: (level) => level > 0 ? '解放済み' : '「レベル2 (×1.5)」を解放します'
     },
-    unlockHard: {
-        name: '難易度「難しい」解放',
+    unlockLevel3: {
+        name: '難易度「レベル3」解放',
         icon: '🔓',
         maxLevel: 1,
         baseCost: 10000,
         costMultiplier: 1,
         getEffect: (level) => level > 0,
-        getDescription: (level) => level > 0 ? '解放済み' : '「難しい (×2.0)」を解放します'
+        getDescription: (level) => level > 0 ? '解放済み' : '「レベル3 (×2.0)」を解放します'
+    },
+    unlockLevel4: {
+        name: '難易度「レベル4」解放',
+        icon: '🔓',
+        maxLevel: 1,
+        baseCost: 30000,
+        costMultiplier: 1,
+        getEffect: (level) => level > 0,
+        getDescription: (level) => level > 0 ? '解放済み' : '「レベル4 (×3.0)」を解放します'
+    },
+    unlockLevel5: {
+        name: '難易度「レベル5」解放',
+        icon: '🔓',
+        maxLevel: 1,
+        baseCost: 50000,
+        costMultiplier: 1,
+        getEffect: (level) => level > 0,
+        getDescription: (level) => level > 0 ? '解放済み' : '「レベル5 (×5.0)」を解放します'
     }
 };
 
@@ -218,35 +166,28 @@ function buyUpgrade(upgradeType) {
 // 難易度設定
 // =====================
 const difficultyConfig = {
-    easy: {
-        name: '簡単',
-        multiplier: 1.0,
-        color: '#00ff88'
-    },
-    normal: {
-        name: '普通',
-        multiplier: 1.5,
-        color: '#ffaa00'
-    },
-    hard: {
-        name: '難しい',
-        multiplier: 2.0,
-        color: '#ff4444'
-    }
+    easy: { name: 'レベル1', multiplier: 1.0, color: '#00ff88' },
+    normal: { name: 'レベル2', multiplier: 1.5, color: '#ffaa00' },
+    hard: { name: 'レベル3', multiplier: 2.0, color: '#ff4444' },
+    level4: { name: 'レベル4', multiplier: 3.0, color: '#ff00ff' },
+    level5: { name: 'レベル5', multiplier: 5.0, color: '#ff0000' }
 };
 
 function setDifficulty(difficulty) {
     if (gameState.isPlaying) return;
 
     // 解放チェック
-    if (difficulty === 'normal' && !gameState.upgrades.unlockNormal) {
-        elements.feedback.textContent = '「普通 (Normal)」を解放するにはショップで購入してください！';
+    const unlockMap = {
+        'normal': 'unlockLevel2',
+        'hard': 'unlockLevel3',
+        'level4': 'unlockLevel4',
+        'level5': 'unlockLevel5'
+    };
+
+    if (unlockMap[difficulty] && !gameState.upgrades[unlockMap[difficulty]]) {
+        const config = difficultyConfig[difficulty];
+        elements.feedback.textContent = `「${config.name}」を解放するにはショップで購入してください！`;
         elements.feedback.style.color = '#ffaa00';
-        return;
-    }
-    if (difficulty === 'hard' && !gameState.upgrades.unlockHard) {
-        elements.feedback.textContent = '「難しい (Hard)」を解放するにはショップで購入してください！';
-        elements.feedback.style.color = '#ff4444';
         return;
     }
 
@@ -255,7 +196,18 @@ function setDifficulty(difficulty) {
     document.querySelectorAll('.difficulty-button').forEach(btn => {
         btn.classList.remove('active');
     });
-    elements[`difficulty${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`].classList.add('active');
+
+    // elements[`difficultyLevelX`] の形式に対応
+    let elementId = 'difficultyLevel';
+    if (difficulty === 'easy') elementId += '1';
+    else if (difficulty === 'normal') elementId += '2';
+    else if (difficulty === 'hard') elementId += '3';
+    else if (difficulty === 'level4') elementId += '4';
+    else if (difficulty === 'level5') elementId += '5';
+
+    if (elements[elementId]) {
+        elements[elementId].classList.add('active');
+    }
 
     saveGame();
 }
@@ -283,6 +235,7 @@ const romajiMap = {
     'だ': ['da'], 'ぢ': ['di'], 'づ': ['du'], 'で': ['de'], 'ど': ['do'],
     'ば': ['ba'], 'び': ['bi'], 'ぶ': ['bu'], 'べ': ['be'], 'ぼ': ['bo'],
     'ぱ': ['pa'], 'ぴ': ['pi'], 'ぷ': ['pu'], 'ぺ': ['pe'], 'ぽ': ['po'],
+    'きゃ': ['kya', 'kixya'], 'きゅ': ['kyu', 'kixyu'], 'きょ': ['kyo', 'kixyo'],
     'しゃ': ['sya', 'sha', 'sixya', 'shixya'],
     'しゅ': ['syu', 'shu', 'sixyu', 'shixyu'],
     'しょ': ['syo', 'sho', 'sixyo', 'shixyo'],
@@ -300,7 +253,17 @@ const romajiMap = {
     'びゃ': ['bya', 'bixya'], 'びゅ': ['byu', 'bixyu'], 'びょ': ['byo', 'bixyo'],
     'ぴゃ': ['pya', 'pixya'], 'ぴゅ': ['pyu', 'pixyu'], 'ぴょ': ['pyo', 'pixyo'],
     'ぁ': ['xa', 'la'], 'ぃ': ['xi', 'li'], 'ぅ': ['xu', 'lu', 'xtu', 'ltu'], 'ぇ': ['xe', 'le'], 'ぉ': ['xo', 'lo'],
-    'っ': ['xtu', 'ltu', 'xtsu', 'ltsu']
+    'っ': ['xtu', 'ltu', 'xtsu', 'ltsu'],
+    'ー': ['-'],
+    'でぃ': ['di', 'dexi', 'deli'],
+    'でゅ': ['dyu', 'dexyu', 'delyu'],
+    'てぃ': ['thi', 'texi', 'teli'],
+    'ふぉ': ['fo', 'fuxo', 'fulo'],
+    'ぅい': ['wi'],
+    'うぃ': ['wi', 'uxi', 'uli'],
+    'うぇ': ['we', 'uxe', 'ule'],
+    'うぉ': ['wo', 'uxo', 'ulo'],
+    'ゔ': ['v', 'vu']
 };
 
 // タイピングステート
@@ -342,38 +305,76 @@ function updatePossiblePatternsFromReading(reading) {
     let i = 0;
 
     while (i < reading.length) {
-        let found = false;
-        // 2文字（拗音など）のチェック
+        let currentPatterns = [];
+        let foundMatch = false;
+
+        // 1. 「っ」（促音）の特殊処理
+        if (reading[i] === 'っ' && i + 1 < reading.length) {
+            const nextChar = reading[i + 1];
+            // 次の文字の最初のローマ字の頭文字を重ねるパターン（例：って -> tte）
+            // 次の文字が「2文字」の場合（例：っちゃ -> ccha, scha...）も考慮
+            let nextVariants = [];
+            if (i + 2 < reading.length && romajiMap[reading.substring(i + 1, i + 3)]) {
+                nextVariants = romajiMap[reading.substring(i + 1, i + 3)];
+            } else if (romajiMap[nextChar]) {
+                nextVariants = romajiMap[nextChar];
+            }
+
+            if (nextVariants.length > 0) {
+                for (let p of patterns) {
+                    // 子音重ねパターン（例：tt, ss）
+                    for (let nv of nextVariants) {
+                        const firstChar = nv[0];
+                        // a,i,u,e,o,n 以外、かつアルファベットの場合に重ねる
+                        if (!['a', 'i', 'u', 'e', 'o', 'n'].includes(firstChar) && /^[a-z]$/i.test(firstChar)) {
+                            currentPatterns.push(p + firstChar);
+                        }
+                    }
+                    // 独立パターンの追加（例：xtu, ltu）
+                    for (let v of romajiMap['っ']) {
+                        currentPatterns.push(p + v);
+                    }
+                }
+                patterns = currentPatterns;
+                i++; // 「っ」だけ処理して次へ（次は通常通り処理されるので結果として「tte」や「xtute」になる）
+                foundMatch = true;
+            }
+        }
+
+        if (foundMatch) continue;
+
+        // 2. 2文字（拗音など）のチェック
         if (i + 1 < reading.length) {
             const twoChars = reading.substring(i, i + 2);
             if (romajiMap[twoChars]) {
                 const variants = romajiMap[twoChars];
-                let newPatterns = [];
                 for (let p of patterns) {
                     for (let v of variants) {
-                        newPatterns.push(p + v);
+                        currentPatterns.push(p + v);
                     }
                 }
-                patterns = newPatterns;
+                patterns = currentPatterns;
                 i += 2;
-                found = true;
+                foundMatch = true;
             }
         }
 
-        if (!found) {
-            const oneChar = reading[i];
-            const variants = romajiMap[oneChar] || [oneChar];
-            let newPatterns = [];
-            for (let p of patterns) {
-                for (let v of variants) {
-                    newPatterns.push(p + v);
-                }
+        if (foundMatch) continue;
+
+        // 3. 1文字のチェック
+        const oneChar = reading[i];
+        const variants = romajiMap[oneChar] || [oneChar];
+        for (let p of patterns) {
+            for (let v of variants) {
+                currentPatterns.push(p + v);
             }
-            patterns = newPatterns;
-            i++;
         }
+        patterns = currentPatterns;
+        i++;
     }
-    typingState.allPossibleRomaji = patterns;
+
+    // 重複を削除して保存
+    typingState.allPossibleRomaji = [...new Set(patterns)];
 }
 
 
@@ -402,24 +403,37 @@ function handleChar(char) {
         elements.targetWord.textContent = typingState.currentWord.romaji;
 
         let charValue = getCharValue();
-        if (gameState.isFever) {
-            const feverMult = upgradeConfig.comboMultiplier.getEffect(gameState.upgrades.comboMultiplier || 0);
+
+        // フィーバーレベル計算 (20コンボごとに上昇)
+        const currentComboLevel = Math.floor(gameState.combo / 20);
+        const unlockedMaxLevel = gameState.upgrades.comboMultiplier;
+        const activeFeverLevel = Math.min(currentComboLevel, unlockedMaxLevel);
+
+        if (activeFeverLevel > 0) {
+            // 倍率計算: Lv1=2.0, Lv2=2.5, Lv3=3.0...
+            const feverMult = 1.5 + (activeFeverLevel * 0.5);
             charValue *= feverMult;
+
+            elements.feedback.textContent = `+${Math.floor(charValue)} (Lv.${activeFeverLevel}🔥)`;
+            elements.feedback.style.color = '#ff00ff';
+            document.body.classList.add('fever-mode');
+        } else {
+            elements.feedback.textContent = `+${Math.floor(charValue)}`;
+            elements.feedback.style.color = '#00ff88';
+            document.body.classList.remove('fever-mode');
         }
 
         gameState.money += charValue;
         gameState.sessionEarnings += charValue;
-        gameState.correctChars++;
 
-        if (gameState.combo >= 10 && !gameState.isFever) {
-            startFever();
+        // コンボと現在の倍率を表示
+        let comboText = `${gameState.combo} Combo`;
+        if (activeFeverLevel > 0) {
+            const feverMult = 1.5 + (activeFeverLevel * 0.5);
+            comboText += ` (${feverMult.toFixed(1)}x)`;
         }
+        elements.comboDisplay.textContent = comboText;
 
-        gameState.energy = Math.min(100, gameState.energy + 0.5);
-        updateEnergyUI();
-
-        elements.feedback.textContent = `+${Math.floor(charValue)}`;
-        elements.comboDisplay.textContent = `${gameState.combo} Combo`;
         elements.userInput.textContent = typingState.currentInput;
         elements.moneyValue.textContent = formatMoney(Math.floor(gameState.money));
 
@@ -542,11 +556,6 @@ function endSession() {
     gameState.isPlaying = false;
     stopTimer();
 
-    // 自動生産分を加算
-    const productionBonus = gameState.totalProduction;
-    gameState.money += productionBonus;
-    gameState.sessionEarnings += productionBonus;
-
     elements.startButton.textContent = 'タイピング開始！';
     elements.startButton.disabled = false;
     elements.targetWordJapanese.textContent = 'お疲れ様でした！';
@@ -571,56 +580,11 @@ function endSession() {
 // ショップシステム
 // =====================
 
-const shopItems = [
-    { id: 'item1', name: 'タワシロボ', emoji: '🤖', production: 2, baseCost: 500 },
-    { id: 'item2', name: 'おにぎりマシン', emoji: '🍙', production: 5, baseCost: 1500 },
-    { id: 'item3', name: 'ラーメンポット', emoji: '🍜', production: 15, baseCost: 5000 },
-    { id: 'item4', name: '寿司製造機', emoji: '🍣', production: 50, baseCost: 20000 },
-    { id: 'item5', name: 'ケーキ工場', emoji: '🍰', production: 200, baseCost: 100000 },
-    { id: 'item6', name: '銀河寿司工場', emoji: '🌌', production: 1500, baseCost: 750000 }
-];
-
-function getItemCost(item) {
-    const owned = gameState.inventory[item.id] || 0;
-    return Math.floor(item.baseCost * Math.pow(1.15, owned));
-}
-
-function buyItem(itemId) {
-    const item = shopItems.find(i => i.id === itemId);
-    if (!item) return;
-
-    const cost = getItemCost(item);
-
-    if (gameState.money >= cost) {
-        gameState.money -= cost;
-        gameState.inventory[itemId] = (gameState.inventory[itemId] || 0) + 1;
-
-        recalculateTotalProduction();
-        updateShopDisplay();
-        updateUI();
-        saveGame();
-
-        elements.feedback.textContent = `${item.emoji} ${item.name} を購入！`;
-        elements.feedback.style.color = '#00ff88';
-    } else {
-        elements.feedback.textContent = 'お金が足りません！';
-        elements.feedback.style.color = '#ff4444';
-    }
-}
-
-function recalculateTotalProduction() {
-    gameState.totalProduction = 0;
-    for (let item of shopItems) {
-        const count = gameState.inventory[item.id] || 0;
-        gameState.totalProduction += item.production * count;
-    }
-}
 
 function openShop() {
     elements.typingMode.classList.add('hidden');
     elements.shopMode.classList.remove('hidden');
     updateUpgradeDisplay();
-    updateShopDisplay();
 }
 
 function closeShop() {
@@ -653,26 +617,6 @@ function updateUpgradeDisplay() {
     }).join('');
 }
 
-function updateShopDisplay() {
-    elements.shopList.innerHTML = shopItems.map(item => {
-        const cost = getItemCost(item);
-        const owned = gameState.inventory[item.id] || 0;
-        const canBuy = gameState.money >= cost;
-
-        return `
-            <div class="shop-item">
-                <div class="shop-item-emoji">${item.emoji}</div>
-                <div class="shop-item-details">
-                    <div class="shop-item-name">${item.name}</div>
-                    <div class="shop-item-production">+${formatMoney(item.production)}/秒 (所持: ${owned})</div>
-                </div>
-                <button class="buy-button-small" onclick="buyItem('${item.id}')" ${canBuy ? '' : 'disabled'}>
-                    💰${formatMoney(cost)}
-                </button>
-            </div>
-        `;
-    }).join('');
-}
 
 // =====================
 // UI更新関数
@@ -683,8 +627,6 @@ function updateUI() {
     if (elements.shopMoneyValue) elements.shopMoneyValue.textContent = moneyText;
 
     elements.charValue.textContent = getCharValue() + '円/文字';
-    elements.productionValue.textContent = formatMoney(Math.floor(gameState.totalProduction)) + '/秒';
-    updateInventoryDisplay();
 }
 
 function updateSessionUI() {
@@ -695,44 +637,6 @@ function updateSessionUI() {
     elements.sessionEarnings.textContent = formatMoney(gameState.sessionEarnings);
 }
 
-function updateInventoryDisplay() {
-    const ownedItems = shopItems.filter(item => (gameState.inventory[item.id] || 0) > 0);
-
-    if (ownedItems.length === 0) {
-        elements.inventoryList.innerHTML = '<div class="inventory-empty">設備なし</div>';
-        return;
-    }
-
-    elements.inventoryList.innerHTML = ownedItems.map(item => {
-        const count = gameState.inventory[item.id];
-        const totalProduction = item.production * count;
-
-        return `
-            <div class="inventory-item-mini">
-                <span>${item.emoji} ${item.name} ×${count}</span>
-                <span class="item-prod-mini">+${formatMoney(totalProduction)}/秒</span>
-            </div>
-        `;
-    }).join('');
-}
-
-function updateEnergyUI() {
-    if (!elements.energyBar) return;
-
-    const percentage = gameState.energy;
-    elements.energyBar.style.width = percentage + '%';
-    elements.energyValueText.textContent = Math.floor(percentage) + '%';
-
-    // 色の変更
-    elements.energyBar.classList.remove('overdrive', 'normal', 'low');
-    if (percentage >= 80) {
-        elements.energyBar.classList.add('overdrive');
-    } else if (percentage >= 20) {
-        elements.energyBar.classList.add('normal');
-    } else {
-        elements.energyBar.classList.add('low');
-    }
-}
 
 // =====================
 // パーティクル演出
@@ -768,11 +672,8 @@ function saveGame() {
     try {
         const saveData = {
             money: gameState.money,
-            inventory: gameState.inventory,
             upgrades: gameState.upgrades,
-            difficulty: gameState.difficulty,
-            totalProduction: gameState.totalProduction,
-            energy: gameState.energy
+            difficulty: gameState.difficulty
         };
 
         localStorage.setItem('sushiTyperFactory', JSON.stringify(saveData));
@@ -792,8 +693,16 @@ function loadGame() {
 
         const saveData = JSON.parse(saveDataStr);
         gameState.money = saveData.money || 0;
-        gameState.inventory = saveData.inventory || {};
-        gameState.upgrades = saveData.upgrades || { charValue: 0, timeLimit: 0 };
+
+        // アップグレードの統合（既存データに無い新しい項目を補完）
+        if (saveData.upgrades) {
+            Object.keys(saveData.upgrades).forEach(key => {
+                if (gameState.upgrades.hasOwnProperty(key)) {
+                    gameState.upgrades[key] = saveData.upgrades[key];
+                }
+            });
+        }
+
         gameState.difficulty = saveData.difficulty || 'easy';
         gameState.energy = saveData.energy !== undefined ? saveData.energy : 100;
         recalculateTotalProduction();
@@ -823,9 +732,11 @@ function init() {
     elements.openShop.addEventListener('click', openShop);
     elements.backToTyping.addEventListener('click', closeShop);
     elements.resetButton.addEventListener('click', resetGame);
-    elements.difficultyEasy.addEventListener('click', () => setDifficulty('easy'));
-    elements.difficultyNormal.addEventListener('click', () => setDifficulty('normal'));
-    elements.difficultyHard.addEventListener('click', () => setDifficulty('hard'));
+    elements.difficultyLevel1.addEventListener('click', () => setDifficulty('easy'));
+    elements.difficultyLevel2.addEventListener('click', () => setDifficulty('normal'));
+    elements.difficultyLevel3.addEventListener('click', () => setDifficulty('hard'));
+    elements.difficultyLevel4.addEventListener('click', () => setDifficulty('level4'));
+    elements.difficultyLevel5.addEventListener('click', () => setDifficulty('level5'));
     window.addEventListener('keydown', handleKeyPress);
 
     // リアルタイム所持金更新開始
@@ -835,7 +746,6 @@ function init() {
 }
 
 // グローバル関数として公開
-window.buyItem = buyItem;
 window.buyUpgrade = buyUpgrade;
 
 // ページ読み込み後に初期化
