@@ -308,8 +308,9 @@ function handleChar(char) {
         // 正解！
         typingState.currentInput = newInput;
 
-        // お金を獲得
+        // お金を獲得（即座に所持金に加算）
         const charValue = getCharValue();
+        gameState.money += charValue;
         gameState.sessionEarnings += charValue;
         gameState.correctChars++;
 
@@ -317,6 +318,9 @@ function handleChar(char) {
         elements.feedback.textContent = `+${charValue}円！`;
         elements.feedback.style.color = difficultyConfig[gameState.difficulty].color;
         elements.userInput.textContent = typingState.currentInput;
+
+        // 所持金をリアルタイム更新
+        elements.moneyValue.textContent = formatMoney(gameState.money);
 
         // パーティクル
         createParticle(window.innerWidth / 2, window.innerHeight / 2, '💰');
@@ -326,7 +330,11 @@ function handleChar(char) {
             gameState.totalWords++;
             const bonus = Math.floor(charValue * 2);
             elements.feedback.textContent = `単語完成！ +${bonus}円ボーナス！`;
+
+            // ボーナスも即座に加算
+            gameState.money += bonus;
             gameState.sessionEarnings += bonus;
+            elements.moneyValue.textContent = formatMoney(gameState.money);
 
             // 次の単語へ
             setTimeout(() => {
@@ -409,7 +417,7 @@ function stopTimer() {
 // =====================
 function startSession() {
     gameState.isPlaying = true;
-    gameState.sessionEarnings = gameState.totalProduction;
+    gameState.sessionEarnings = 0; // ゼロからスタート
     gameState.correctChars = 0;
     gameState.totalWords = 0;
 
@@ -431,7 +439,10 @@ function endSession() {
     gameState.isPlaying = false;
     stopTimer();
 
-    gameState.money += gameState.sessionEarnings;
+    // 自動生産分を加算
+    const productionBonus = gameState.totalProduction;
+    gameState.money += productionBonus;
+    gameState.sessionEarnings += productionBonus;
 
     elements.startButton.textContent = 'タイピング開始！';
     elements.startButton.disabled = false;
