@@ -6,17 +6,25 @@ const gameState = {
     sessionEarnings: 0,         // 今回のセッションで稼いだ金額
     totalProduction: 0,         // 設備による自動生産額（毎分）
     inventory: {},              // 所持設備 { itemId: count }
+    upgrades: {                 // アップグレードレベル
+        charValue: 0,           // 文字単価レベル (0-5)
+        timeLimit: 0            // 制限時間レベル (0-5)
+    },
+    difficulty: 'easy',         // 現在の難易度
     correctChars: 0,            // 今回のセッションの正解文字数
     totalWords: 0,              // 今回のセッションの完成単語数
     isPlaying: false,           // タイピング中かどうか
-    timeRemaining: 60           // 残り時間（秒）
+    timeRemaining: 60,          // 残り時間（秒）
+    maxTime: 60                 // 最大時間（秒）
 };
 
 // UI要素の取得
 const elements = {
     moneyValue: document.getElementById('moneyValue'),
     timerValue: document.getElementById('timerValue'),
+    timerBar: document.getElementById('timerBar'),
     sessionEarnings: document.getElementById('sessionEarnings'),
+    charValue: document.getElementById('charValue'),
     productionValue: document.getElementById('productionValue'),
     targetWord: document.getElementById('targetWord'),
     userInput: document.getElementById('userInput'),
@@ -26,11 +34,15 @@ const elements = {
     startButton: document.getElementById('startButton'),
     typingMode: document.getElementById('typingMode'),
     shopMode: document.getElementById('shopMode'),
+    upgradeList: document.getElementById('upgradeList'),
     shopList: document.getElementById('shopList'),
     inventoryList: document.getElementById('inventoryList'),
     openShop: document.getElementById('openShop'),
     backToTyping: document.getElementById('backToTyping'),
-    particleContainer: document.getElementById('particleContainer')
+    particleContainer: document.getElementById('particleContainer'),
+    difficultyEasy: document.getElementById('difficultyEasy'),
+    difficultyNormal: document.getElementById('difficultyNormal'),
+    difficultyHard: document.getElementById('difficultyHard')
 };
 
 // =====================
@@ -46,24 +58,131 @@ function formatMoney(value) {
 }
 
 // =====================
+// アップグレード設定
+// =====================
+const upgradeConfig = {
+    charValue: {
+        name: '文字単価アップ',
+        icon: '💰',
+        maxLevel: 5,
+        baseCost: 1000,
+        costMultiplier: 2.5,
+        getEffect: (level) => 10 + (level * 10), // 10, 20, 30, 40, 50, 60
+        getDescription: (level) => `${10 + (level * 10)}円/文字 → ${10 + ((level + 1) * 10)}円/文字`
+    },
+    timeLimit: {
+        name: '制限時間延長',
+        icon: '⏰',
+        maxLevel: 5,
+        baseCost: 2000,
+        costMultiplier: 2.0,
+        getEffect: (level) => 60 + (level * 30), // 60, 90, 120, 150, 180, 210
+        getDescription: (level) => `${60 + (level * 30)}秒 → ${60 + ((level + 1) * 30)}秒`
+    }
+};
+
+// アップグレードコストを計算
+function getUpgradeCost(upgradeType) {
+    const config = upgradeConfig[upgradeType];
+    const level = gameState.upgrades[upgradeType];
+    return Math.floor(config.baseCost * Math.pow(config.costMultiplier, level));
+}
+
+// アップグレードを購入
+function buyUpgrade(upgradeType) {
+    const config = upgradeConfig[upgradeType];
+    const currentLevel = gameState.upgrades[upgradeType];
+
+    if (currentLevel >= config.maxLevel) {
+        elements.feedback.textContent = '最大レベルです！';
+        elements.feedback.style.color = '#ffaa00';
+        return;
+    }
+
+    const cost = getUpgradeCost(upgradeType);
+
+    if (gameState.money >= cost) {
+        gameState.money -= cost;
+        gameState.upgrades[upgradeType]++;
+
+        // UI更新
+        updateUpgradeDisplay();
+        updateUI();
+        saveGame();
+
+        // フィードバック
+        elements.feedback.textContent = `${config.icon} ${config.name} レベルアップ！`;
+        elements.feedback.style.color = '#00ff88';
+    } else {
+        elements.feedback.textContent = 'お金が足りません！';
+        elements.feedback.style.color = '#ff4444';
+    }
+}
+
+// =====================
+// 難易度設定
+// =====================
+const difficultyConfig = {
+    easy: {
+        name: '簡単',
+        multiplier: 1.0,
+        color: '#00ff88'
+    },
+    normal: {
+        name: '普通',
+        multiplier: 1.5,
+        color: '#ffaa00'
+    },
+    hard: {
+        name: '難しい',
+        multiplier: 2.0,
+        color: '#ff4444'
+    }
+};
+
+// 難易度を変更
+function setDifficulty(difficulty) {
+    if (gameState.isPlaying) return; // プレイ中は変更不可
+
+    gameState.difficulty = difficulty;
+
+    // ボタンのアクティブ状態を更新
+    document.querySelectorAll('.difficulty-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    elements[`difficulty${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`].classList.add('active');
+
+    saveGame();
+}
+
+// =====================
 // タイピング機能
 // =====================
 
-// 初心者向けの簡単な単語リスト
-const wordList = [
-    'a', 'i', 'u', 'e', 'o',
-    'ka', 'ki', 'ku', 'ke', 'ko',
-    'sa', 'si', 'su', 'se', 'so',
-    'ta', 'ti', 'tu', 'te', 'to',
-    'na', 'ni', 'nu', 'ne', 'no',
-    'ha', 'hi', 'hu', 'he', 'ho',
-    'ma', 'mi', 'mu', 'me', 'mo',
-    'ya', 'yu', 'yo',
-    'ra', 'ri', 'ru', 're', 'ro',
-    'wa', 'wo', 'nn',
-    'neko', 'inu', 'sushi', 'ramen',
-    'kasa', 'kame', 'sakana', 'hana'
-];
+// レシピテーマの単語リスト
+const wordLists = {
+    easy: [
+        'miso', 'sake', 'tofu', 'nori', 'ume',
+        'mame', 'kome', 'niku', 'ika', 'ebi',
+        'saba', 'aji', 'tai', 'kani', 'tako',
+        'tamago', 'negi', 'nasu', 'daikon'
+    ],
+    normal: [
+        'sushi', 'ramen', 'udon', 'soba', 'tempura',
+        'yakitori', 'tonkatsu', 'karaage', 'gyoza',
+        'okonomiyaki', 'takoyaki', 'yakisoba',
+        'teriyaki', 'sukiyaki', 'shabu-shabu',
+        'katsudon', 'oyakodon', 'gyudon'
+    ],
+    hard: [
+        'chawanmushi', 'nikujaga', 'hamburger',
+        'omurice', 'hayashi-rice', 'curry-rice',
+        'niku-jaga', 'korokke', 'menchi-katsu',
+        'ebi-fry', 'aji-fry', 'kaki-fry',
+        'yasai-itame', 'buta-kimchi', 'mapo-tofu',
+        'hoikoro', 'chinjao-rosu', 'subuta'
+    ]
+};
 
 // タイピングステート
 const typingState = {
@@ -74,7 +193,9 @@ const typingState = {
 
 // 新しい単語を設定
 function setNewWord() {
-    const randomWord = wordList[Math.floor(Math.random() * wordList.length)];
+    const words = wordLists[gameState.difficulty];
+    const randomWord = words[Math.floor(Math.random() * words.length)];
+
     typingState.currentWord = randomWord;
     typingState.currentInput = '';
     typingState.currentCharIndex = 0;
@@ -84,8 +205,12 @@ function setNewWord() {
     elements.feedback.textContent = '';
 }
 
-// 1文字正解時の報酬
-const MONEY_PER_CHAR = 10;
+// 1文字正解時の報酬を計算
+function getCharValue() {
+    const baseValue = upgradeConfig.charValue.getEffect(gameState.upgrades.charValue);
+    const multiplier = difficultyConfig[gameState.difficulty].multiplier;
+    return Math.floor(baseValue * multiplier);
+}
 
 // 1文字入力を処理
 function handleChar(char) {
@@ -97,12 +222,13 @@ function handleChar(char) {
         typingState.currentCharIndex++;
 
         // お金を獲得
-        gameState.sessionEarnings += MONEY_PER_CHAR;
+        const charValue = getCharValue();
+        gameState.sessionEarnings += charValue;
         gameState.correctChars++;
 
         // フィードバック
-        elements.feedback.textContent = `+${MONEY_PER_CHAR}円！`;
-        elements.feedback.style.color = '#00ff88';
+        elements.feedback.textContent = `+${charValue}円！`;
+        elements.feedback.style.color = difficultyConfig[gameState.difficulty].color;
 
         // パーティクル
         createParticle(window.innerWidth / 2, window.innerHeight / 2, '💰');
@@ -110,8 +236,9 @@ function handleChar(char) {
         // 単語完成チェック
         if (typingState.currentCharIndex >= typingState.currentWord.length) {
             gameState.totalWords++;
-            elements.feedback.textContent = `単語完成！ +${MONEY_PER_CHAR}円ボーナス！`;
-            gameState.sessionEarnings += MONEY_PER_CHAR;
+            const bonus = Math.floor(charValue * 2);
+            elements.feedback.textContent = `単語完成！ +${bonus}円ボーナス！`;
+            gameState.sessionEarnings += bonus;
 
             // 次の単語へ
             setTimeout(() => {
@@ -138,8 +265,8 @@ function handleKeyPress(event) {
 
     event.preventDefault();
 
-    // 英数字のみ受け付け
-    if (!/^[a-z]$/.test(event.key.toLowerCase())) {
+    // 英数字と-(ハイフン)を受け付け
+    if (!/^[a-z\-]$/.test(event.key.toLowerCase())) {
         return;
     }
 
@@ -152,7 +279,8 @@ function handleKeyPress(event) {
 let timerInterval = null;
 
 function startTimer() {
-    gameState.timeRemaining = 60;
+    gameState.maxTime = upgradeConfig.timeLimit.getEffect(gameState.upgrades.timeLimit);
+    gameState.timeRemaining = gameState.maxTime;
     updateTimerDisplay();
 
     timerInterval = setInterval(() => {
@@ -168,12 +296,20 @@ function startTimer() {
 function updateTimerDisplay() {
     elements.timerValue.textContent = gameState.timeRemaining + '秒';
 
+    // タイマーバーの更新
+    const percentage = (gameState.timeRemaining / gameState.maxTime) * 100;
+    elements.timerBar.style.width = percentage + '%';
+
     // 色変更
     elements.timerValue.classList.remove('warning', 'danger');
+    elements.timerBar.classList.remove('warning', 'danger');
+
     if (gameState.timeRemaining <= 10) {
         elements.timerValue.classList.add('danger');
-    } else if (gameState.timeRemaining <= 30) {
+        elements.timerBar.classList.add('danger');
+    } else if (gameState.timeRemaining <= gameState.maxTime * 0.3) {
         elements.timerValue.classList.add('warning');
+        elements.timerBar.classList.add('warning');
     }
 }
 
@@ -200,6 +336,11 @@ function startSession() {
     elements.feedback.textContent = 'がんばって！';
     elements.feedback.style.color = '#00ff88';
 
+    // 難易度ボタンを無効化
+    document.querySelectorAll('.difficulty-button').forEach(btn => {
+        btn.disabled = true;
+    });
+
     // タイピング開始
     setNewWord();
     startTimer();
@@ -221,6 +362,11 @@ function endSession() {
     elements.userInput.textContent = '';
     elements.feedback.textContent = `${formatMoney(gameState.sessionEarnings)} 獲得！`;
     elements.feedback.style.color = '#ffaa00';
+
+    // 難易度ボタンを有効化
+    document.querySelectorAll('.difficulty-button').forEach(btn => {
+        btn.disabled = false;
+    });
 
     // 保存
     saveGame();
@@ -293,6 +439,7 @@ function recalculateTotalProduction() {
 function openShop() {
     elements.typingMode.classList.add('hidden');
     elements.shopMode.classList.remove('hidden');
+    updateUpgradeDisplay();
     updateShopDisplay();
 }
 
@@ -300,6 +447,32 @@ function openShop() {
 function closeShop() {
     elements.shopMode.classList.add('hidden');
     elements.typingMode.classList.remove('hidden');
+}
+
+// アップグレード表示を更新
+function updateUpgradeDisplay() {
+    elements.upgradeList.innerHTML = Object.keys(upgradeConfig).map(upgradeType => {
+        const config = upgradeConfig[upgradeType];
+        const currentLevel = gameState.upgrades[upgradeType];
+        const isMaxed = currentLevel >= config.maxLevel;
+        const cost = isMaxed ? 0 : getUpgradeCost(upgradeType);
+        const canBuy = !isMaxed && gameState.money >= cost;
+
+        return `
+            <div class="upgrade-item ${isMaxed ? 'maxed' : ''}">
+                <div class="upgrade-item-icon">${config.icon}</div>
+                <div class="upgrade-item-name">${config.name}</div>
+                <div class="upgrade-item-level">レベル ${currentLevel}/${config.maxLevel}</div>
+                <div class="upgrade-item-effect">${isMaxed ? '最大レベル！' : config.getDescription(currentLevel)}</div>
+                ${!isMaxed ? `
+                    <div class="upgrade-item-cost">💰 ${formatMoney(cost)}</div>
+                    <button class="buy-button" onclick="buyUpgrade('${upgradeType}')" ${canBuy ? '' : 'disabled'}>
+                        アップグレード
+                    </button>
+                ` : '<div style="color: #ffaa00; font-weight: bold;">完成！</div>'}
+            </div>
+        `;
+    }).join('');
 }
 
 // ショップ表示を更新
@@ -329,6 +502,7 @@ function updateShopDisplay() {
 // =====================
 function updateUI() {
     elements.moneyValue.textContent = formatMoney(gameState.money);
+    elements.charValue.textContent = getCharValue() + '円/文字';
     elements.productionValue.textContent = formatMoney(gameState.totalProduction) + '/分';
     updateInventoryDisplay();
 }
@@ -391,6 +565,8 @@ function saveGame() {
         const saveData = {
             money: gameState.money,
             inventory: gameState.inventory,
+            upgrades: gameState.upgrades,
+            difficulty: gameState.difficulty,
             totalProduction: gameState.totalProduction
         };
 
@@ -412,6 +588,8 @@ function loadGame() {
         const saveData = JSON.parse(saveDataStr);
         gameState.money = saveData.money || 0;
         gameState.inventory = saveData.inventory || {};
+        gameState.upgrades = saveData.upgrades || { charValue: 0, timeLimit: 0 };
+        gameState.difficulty = saveData.difficulty || 'easy';
         recalculateTotalProduction();
 
         console.log('📂 セーブデータをロードしました');
@@ -433,19 +611,24 @@ function init() {
 
     // UI初期化
     updateUI();
+    setDifficulty(gameState.difficulty);
     elements.targetWord.textContent = '「タイピング開始！」を押してね';
 
     // イベントリスナー
     elements.startButton.addEventListener('click', startSession);
     elements.openShop.addEventListener('click', openShop);
     elements.backToTyping.addEventListener('click', closeShop);
+    elements.difficultyEasy.addEventListener('click', () => setDifficulty('easy'));
+    elements.difficultyNormal.addEventListener('click', () => setDifficulty('normal'));
+    elements.difficultyHard.addEventListener('click', () => setDifficulty('hard'));
     window.addEventListener('keydown', handleKeyPress);
 
     console.log('✅ 初期化完了！');
 }
 
-// buyItem関数をグローバルに公開
+// グローバル関数として公開
 window.buyItem = buyItem;
+window.buyUpgrade = buyUpgrade;
 
 // ページ読み込み後に初期化
 window.addEventListener('DOMContentLoaded', init);
