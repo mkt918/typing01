@@ -9,42 +9,30 @@
 </head>
 
 <body>
-    <!-- Header: 所持金・タイマー -->
-    <header class="game-header">
-        <div class="money-display">
-            <div class="money-label">💰 所持金</div>
-            <div id="moneyValue" class="money-value">0円</div>
-        </div>
-        <div class="timer-container">
-            <div class="timer-label">⏱️ 残り時間</div>
-            <div id="timerValue" class="timer-value">60秒</div>
-            <div class="timer-bar-wrapper">
-                <div id="timerBar" class="timer-bar" style="width: 100%;"></div>
+    <header class="game-header-compact">
+        <div class="header-left">
+            <div class="money-compact">💰 <span id="moneyValue">0円</span></div>
+            <div class="energy-mini-container">
+                ⚡ <span id="energyValueText">100%</span>
+                <div class="energy-bar-mini-wrapper">
+                    <div id="energyBar" class="energy-bar-mini overdrive" style="width: 100%;"></div>
+                </div>
             </div>
         </div>
-        <div class="energy-container">
-            <div class="energy-label">⚡ 工場電力</div>
-            <div id="energyValueText" class="energy-value-text">100%</div>
-            <div class="energy-bar-wrapper">
-                <div id="energyBar" class="energy-bar overdrive" style="width: 100%;"></div>
+        <div class="header-center">
+            <div class="timer-compact">
+                ⏱️ <span id="timerValue">60秒</span>
+                <div class="timer-bar-mini-wrapper">
+                    <div id="timerBar" class="timer-bar-mini" style="width: 100%;"></div>
+                </div>
             </div>
         </div>
-        <div class="stats">
-            <div class="stat-item">
-                <span class="stat-label">今回獲得:</span>
-                <span id="sessionEarnings" class="stat-value">0円</span>
+        <div class="header-right">
+            <div class="stats-compact">
+                <span>単価: <span id="charValue">10円</span></span>
+                <span>生産: <span id="productionValue">0円/分</span></span>
             </div>
-            <div class="stat-item">
-                <span class="stat-label">文字単価:</span>
-                <span id="charValue" class="stat-value">10円/文字</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">毎分生産:</span>
-                <span id="productionValue" class="stat-value">0円/分</span>
-            </div>
-        </div>
-        <div class="header-buttons">
-            <button id="resetButton" class="reset-button">🔄 リセット</button>
+            <button id="resetButton" class="reset-button-mini">🔄</button>
         </div>
     </header>
 

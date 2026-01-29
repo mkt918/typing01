@@ -48,6 +48,8 @@ const elements = {
     backToTyping: document.getElementById('backToTyping'),
     resetButton: document.getElementById('resetButton'),
     particleContainer: document.getElementById('particleContainer'),
+    difficultyEasy: document.getElementById('difficultyEasy'),
+    difficultyNormal: document.getElementById('difficultyNormal'),
     difficultyHard: document.getElementById('difficultyHard'),
     energyBar: document.getElementById('energyBar'),
     energyValueText: document.getElementById('energyValueText')
@@ -82,14 +84,16 @@ function updateMoneyRealtime() {
     if (gameState.totalProduction > 0) {
         const now = Date.now();
         const deltaSeconds = (now - gameState.lastProductionTime) / 1000;
-        const productionPerSecond = gameState.totalProduction / 60;
-        const multiplier = getProductionMultiplier();
-        const earned = Math.floor(productionPerSecond * deltaSeconds * multiplier);
 
-        if (earned >= 1) {
+        // 毎秒の生産額
+        const productionPerSecond = gameState.totalProduction;
+        const multiplier = getProductionMultiplier();
+        const earned = productionPerSecond * deltaSeconds * multiplier;
+
+        if (earned > 0) {
             gameState.money += earned;
             gameState.lastProductionTime = now;
-            elements.moneyValue.textContent = formatMoney(gameState.money);
+            elements.moneyValue.textContent = formatMoney(Math.floor(gameState.money));
         }
     }
 
@@ -134,20 +138,29 @@ const upgradeConfig = {
     charValue: {
         name: '文字単価アップ',
         icon: '💰',
-        maxLevel: 20,
-        baseCost: 300,
-        costMultiplier: 1.3,
-        getEffect: (level) => 10 + (level * 5), // 10, 15, 20, 25, 30... 110
-        getDescription: (level) => `${10 + (level * 5)}円/文字 → ${10 + ((level + 1) * 5)}円/文字`
+        maxLevel: 100, // 上限を増やして1円ベースに対応
+        baseCost: 10,  // 初期コストも安く
+        costMultiplier: 1.15,
+        getEffect: (level) => 1 + level, // 1円スタート、1レベルにつき+1円
+        getDescription: (level) => `${1 + level}円 → ${1 + level + 1}円`
     },
     timeLimit: {
         name: '制限時間延長',
         icon: '⏰',
+        maxLevel: 30,
+        baseCost: 300,
+        costMultiplier: 1.2,
+        getEffect: (level) => 60 + (level * 5),
+        getDescription: (level) => `${60 + (level * 5)}秒 → ${60 + ((level + 1) * 5)}秒`
+    },
+    comboMultiplier: {
+        name: 'コンボ集中力',
+        icon: '🔥',
         maxLevel: 20,
         baseCost: 500,
-        costMultiplier: 1.25,
-        getEffect: (level) => 60 + (level * 15), // 60, 75, 90, 105... 360
-        getDescription: (level) => `${60 + (level * 15)}秒 → ${60 + ((level + 1) * 15)}秒`
+        costMultiplier: 1.5,
+        getEffect: (level) => 2.0 + (level * 0.1),
+        getDescription: (level) => `フィーバー倍率 ${(2.0 + level * 0.1).toFixed(1)}倍 → ${(2.0 + (level + 1) * 0.1).toFixed(1)}倍`
     }
 };
 
@@ -291,27 +304,112 @@ const wordLists = {
         { japanese: '組織', romaji: 'sosiki' },
         { japanese: '倉庫', romaji: 'souko' }
     ],
-    normal: [], // 難易度はEasyのみとする指示と解釈（必要なら後で追加）
-    hard: []
+    normal: [
+        { japanese: '棚', romaji: 'tana' },
+        { japanese: '何', romaji: 'nani' },
+        { japanese: '立つ', romaji: 'tatsu' },
+        { japanese: '母', romaji: 'haha' },
+        { japanese: '耳', romaji: 'mimi' },
+        { japanese: '谷', romaji: 'tani' },
+        { japanese: '猫', romaji: 'neko' },
+        { japanese: '肉', romaji: 'niku' },
+        { japanese: '豆', romaji: 'mame' },
+        { japanese: '箸', romaji: 'hasi' },
+        { japanese: '旗', romaji: 'hata' },
+        { japanese: '服', romaji: 'huku' },
+        { japanese: '星', romaji: 'hosi' },
+        { japanese: '胸', romaji: 'mune' },
+        { japanese: '骨', romaji: 'hone' },
+        { japanese: '肩', romaji: 'kata' },
+        { japanese: '手', romaji: 'te' },
+        { japanese: '店', romaji: 'mise' },
+        { japanese: '紐', romaji: 'himo' },
+        { japanese: '布', romaji: 'nuno' },
+        { japanese: '山', romaji: 'yama' },
+        { japanese: '桜', romaji: 'sakura' },
+        { japanese: '川', romaji: 'kawa' },
+        { japanese: '夜', romaji: 'yoru' },
+        { japanese: '平和', romaji: 'heiwa' },
+        { japanese: '空', romaji: 'sora' },
+        { japanese: '海', romaji: 'umi' },
+        { japanese: '森', romaji: 'mori' },
+        { japanese: '冬', romaji: 'fuyu' },
+        { japanese: '夢', romaji: 'yume' },
+        { japanese: '歌', romaji: 'uta' },
+        { japanese: '庭', romaji: 'niwa' },
+        { japanese: '色', romaji: 'iro' },
+        { japanese: '鳥', romaji: 'tori' },
+        { japanese: '雲', romaji: 'kumo' },
+        { japanese: '池', romaji: 'ike' },
+        { japanese: '声', romaji: 'koe' },
+        { japanese: '猿', romaji: 'saru' },
+        { japanese: '船', romaji: 'hune' },
+        { japanese: '春', romaji: 'haru' }
+    ],
+    hard: [
+        { japanese: 'お茶', romaji: 'otya' }, { japanese: '医者', romaji: 'isya' }, { japanese: '会社', romaji: 'kaisya' },
+        { japanese: '客', romaji: 'kyaku' }, { japanese: '九州', romaji: 'kyuusyuu' }, { japanese: '住所', romaji: 'juusyo' },
+        { japanese: '著者', romaji: 'tyosya' }, { japanese: '辞書', romaji: 'jisyo' }, { japanese: '列車', romaji: 'ressya' },
+        { japanese: '過去', romaji: 'kako' }, { japanese: '勉強', romaji: 'benkyou' }, { japanese: '集中', romaji: 'syuutyuu' },
+        { japanese: '練習', romaji: 'rensyuu' }, { japanese: '執着', romaji: 'syuutyaku' }, { japanese: '余裕', romaji: 'yoyuu' },
+        { japanese: '記者', romaji: 'kisya' }, { japanese: '救急', romaji: 'kyuukyuu' }, { japanese: '除去', romaji: 'jokyo' },
+        { japanese: '首相', romaji: 'syusyou' }, { japanese: '業者', romaji: 'gyosya' }, { japanese: '拍手', romaji: 'hakusyu' },
+        { japanese: '写真', romaji: 'syasin' }, { japanese: '趣味', romaji: 'syumi' }, { japanese: '終点', romaji: 'syuuten' },
+        { japanese: '逆', romaji: 'gyaku' }, { japanese: '休暇', romaji: 'kyuuka' }, { japanese: '教授', romaji: 'kyouju' },
+        { japanese: '略語', romaji: 'ryakugo' }, { japanese: '昨夜', romaji: 'sakuya' }, { japanese: '宿題', romaji: 'syukudai' },
+        { japanese: '読書', romaji: 'dokusyo' }, { japanese: '特徴', romaji: 'tokutyou' }, { japanese: '視聴', romaji: 'sityou' },
+        { japanese: '描写', romaji: 'byousya' }, { japanese: '雪', romaji: 'yuki' }, { japanese: '雲', romaji: 'kumo' },
+        { japanese: '芋', romaji: 'imo' }, { japanese: '木', romaji: 'ki' }, { japanese: '門', romaji: 'mon' },
+        { japanese: '飲み', romaji: 'nomi' }, { japanese: '読み', romaji: 'yomi' }, { japanese: '海', romaji: 'umi' },
+        { japanese: '闇', romaji: 'yami' }, { japanese: '意味', romaji: 'imi' }, { japanese: '荷物', romaji: 'nimotsu' },
+        { japanese: '飲み物', romaji: 'nomimono' }, { japanese: '遺言', romaji: 'yuigon' }, { japanese: '膿', romaji: 'umi' },
+        { japanese: '桃', romaji: 'momo' }, { japanese: '濃い', romaji: 'koi' }, { japanese: '遺骨', romaji: 'ikotsu' },
+        { japanese: '向こう', romaji: 'mukou' }, { japanese: '耳', romaji: 'mimi' }, { japanese: '明日', romaji: 'ashita' },
+        { japanese: '汗', romaji: 'ase' }, { japanese: '餌', romaji: 'esa' }, { japanese: '枝', romaji: 'eda' },
+        { japanese: '腕', romaji: 'ude' }, { japanese: '宛て', romaji: 'ate' }, { japanese: '勝て', romaji: 'kate' },
+        { japanese: '捨て', romaji: 'sute' }, { japanese: 'さて', romaji: 'sate' }, { japanese: '座標', romaji: 'zahyou' },
+        { japanese: '下', romaji: 'shita' }, { japanese: 'ただ', romaji: 'tada' }, { japanese: 'デカ', romaji: 'deka' },
+        { japanese: '出せ', romaji: 'dase' }, { japanese: '鉄', romaji: 'tetsu' }, { japanese: '戦地', romaji: 'sentchi' },
+        { japanese: '世田谷', romaji: 'setagaya' }, { japanese: '赤道', romaji: 'sekidou' }, { japanese: '手続き', romaji: 'tetuzuki' },
+        { japanese: '徹底', romaji: 'tettei' }
+    ]
 };
 
 // ローマ字変換マップ（完全対応）
 const romajiMap = {
-    'し': ['si', 'shi', 'ci'],
-    'ち': ['ti', 'chi'],
-    'つ': ['tu', 'tsu'],
-    'ふ': ['hu', 'fu'],
-    'じ': ['zi', 'ji'],
-    'しゃ': ['sya', 'sha', 'shixya'],
-    'しゅ': ['syu', 'shu', 'shixyu'],
-    'しょ': ['syo', 'sho', 'shixyo'],
-    'ちゃ': ['tya', 'cha', 'chixya', 'cya'],
-    'ちゅ': ['tyu', 'chu', 'chixyu', 'cyu'],
-    'ちょ': ['tyo', 'cho', 'chixyo', 'cyo'],
+    'あ': ['a'], 'い': ['i', 'yi'], 'う': ['u', 'wu'], 'え': ['e', 'ye'], 'お': ['o'],
+    'か': ['ka', 'ca'], 'き': ['ki'], 'く': ['ku', 'cu', 'qu'], 'け': ['ke'], 'こ': ['ko', 'co'],
+    'さ': ['sa'], 'し': ['si', 'shi', 'ci'], 'す': ['su'], 'せ': ['se', 'ce'], 'そ': ['so'],
+    'た': ['ta'], 'ち': ['ti', 'chi'], 'つ': ['tu', 'tsu'], 'て': ['te'], 'と': ['to'],
+    'な': ['na'], 'に': ['ni'], 'ぬ': ['nu'], 'ね': ['ne'], 'の': ['no'],
+    'は': ['ha'], 'ひ': ['hi'], 'ふ': ['hu', 'fu'], 'へ': ['he'], 'ほ': ['ho'],
+    'ま': ['ma'], 'み': ['mi'], 'む': ['mu'], 'め': ['me'], 'も': ['mo'],
+    'や': ['ya'], 'ゆ': ['yu'], 'よ': ['yo'],
+    'ら': ['ra'], 'り': ['ri'], 'る': ['ru'], 'れ': ['re'], 'ろ': ['ro'],
+    'わ': ['wa'], 'を': ['wo'], 'ん': ['nn', 'n', 'xn'],
+    'が': ['ga'], 'ぎ': ['gi'], 'ぐ': ['gu'], 'げ': ['ge'], 'ご': ['go'],
+    'ざ': ['za'], 'じ': ['zi', 'ji'], 'ず': ['zu'], 'ぜ': ['ze'], 'ぞ': ['zo'],
+    'だ': ['da'], 'ぢ': ['di'], 'づ': ['du'], 'で': ['de'], 'ど': ['do'],
+    'ば': ['ba'], 'び': ['bi'], 'ぶ': ['bu'], 'べ': ['be'], 'ぼ': ['bo'],
+    'ぱ': ['pa'], 'ぴ': ['pi'], 'ぷ': ['pu'], 'ぺ': ['pe'], 'ぽ': ['po'],
+    'しゃ': ['sya', 'sha', 'sixya', 'shixya'],
+    'しゅ': ['syu', 'shu', 'sixyu', 'shixyu'],
+    'しょ': ['syo', 'sho', 'sixyo', 'shixyo'],
+    'ちゃ': ['tya', 'cha', 'tixya', 'chixya', 'cya'],
+    'ちゅ': ['tyu', 'chu', 'tixyu', 'chixyu', 'cyu'],
+    'ちょ': ['tyo', 'cho', 'tixyo', 'chixyo', 'cyo'],
+    'にゃ': ['nya', 'nixya'], 'にゅ': ['nyu', 'nixyu'], 'にょ': ['nyo', 'nixyo'],
+    'ひゃ': ['hya', 'hixya'], 'ひゅ': ['hyu', 'hixyu'], 'ひょ': ['hyo', 'hixyo'],
+    'みゃ': ['mya', 'mixya'], 'みゅ': ['myu', 'mixyu'], 'みょ': ['myo', 'mixyo'],
+    'りゃ': ['rya', 'rixya'], 'りゅ': ['ryu', 'rixyu'], 'りょ': ['ryo', 'rixyo'],
+    'ぎゃ': ['gya', 'gixya'], 'ぎゅ': ['gyu', 'gixyu'], 'ぎょ': ['gyo', 'gixyo'],
     'じゃ': ['ja', 'jya', 'zya', 'jixya', 'zixya'],
     'じゅ': ['ju', 'jyu', 'zyu', 'jixyu', 'zixyu'],
     'じょ': ['jo', 'jyo', 'zyo', 'jixyo', 'zixyo'],
-    'ん': ['nn', 'n']
+    'びゃ': ['bya', 'bixya'], 'びゅ': ['byu', 'bixyu'], 'びょ': ['byo', 'bixyo'],
+    'ぴゃ': ['pya', 'pixya'], 'ぴゅ': ['pyu', 'pixyu'], 'ぴょ': ['pyo', 'pixyo'],
+    'ぁ': ['xa', 'la'], 'ぃ': ['xi', 'li'], 'ぅ': ['xu', 'lu', 'xtu', 'ltu'], 'ぇ': ['xe', 'le'], 'ぉ': ['xo', 'lo'],
+    'っ': ['xtu', 'ltu', 'xtsu', 'ltsu']
 };
 
 // タイピングステート
@@ -357,34 +455,82 @@ function handleChar(char) {
     const targetRomaji = typingState.currentWord.romaji;
     const newInput = typingState.currentInput + char;
 
-    // 入力が正しいかチェック（前方一致）
+    let isCorrect = false;
+
+    // 1. 完全一致チェック
     if (targetRomaji.startsWith(newInput)) {
+        isCorrect = true;
+    } else {
+        // 2. 特殊パターン代替チェック (si/shi, zi/ji など)
+        const remaining = targetRomaji.substring(typingState.currentInput.length);
+        const alternates = {
+            'shi': 'si', 'si': 'shi',
+            'chi': 'ti', 'ti': 'chi',
+            'tsu': 'tu', 'tu': 'tsu',
+            'fu': 'hu', 'hu': 'fu',
+            'ji': 'zi', 'zi': 'ji',
+            'sha': 'sya', 'sya': 'sha',
+            'shu': 'syu', 'syu': 'shu',
+            'sho': 'syo', 'syo': 'sho',
+            'ja': 'zya', 'zya': 'ja',
+            'ju': 'zyu', 'zyu': 'ju',
+            'jo': 'zyo', 'zyo': 'jo'
+        };
+
+        for (let key in alternates) {
+            if (remaining.startsWith(key)) {
+                const altRemaining = alternates[key] + remaining.substring(key.length);
+                if (altRemaining.startsWith(char)) {
+                    isCorrect = true;
+                    // 正解とするために、ターゲット単語のromaji自体を書き換えて一貫性を保つ
+                    typingState.currentWord.romaji = typingState.currentInput + altRemaining;
+                    elements.targetWord.textContent = typingState.currentWord.romaji;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (isCorrect) {
         // 正解！
-        typingState.currentInput = newInput;
+        typingState.currentInput = typingState.currentInput + char;
+        gameState.combo++;
 
         // お金獲得・電力回復
-        const charValue = getCharValue();
+        let charValue = getCharValue();
+
+        // フィーバー中なら倍増（アップグレード反映）
+        if (gameState.isFever) {
+            const feverMult = upgradeConfig.comboMultiplier.getEffect(gameState.upgrades.comboMultiplier || 0);
+            charValue *= feverMult;
+        }
+
         gameState.money += charValue;
         gameState.sessionEarnings += charValue;
         gameState.correctChars++;
+
+        // フィーバーチェック (10コンボで発動)
+        if (gameState.combo >= 10 && !gameState.isFever) {
+            startFever();
+        }
 
         // 電力回復 (+0.5%)
         gameState.energy = Math.min(100, gameState.energy + 0.5);
         updateEnergyUI();
 
         // フィードバック
-        elements.feedback.textContent = `+${charValue}円！`;
+        elements.feedback.textContent = `+${Math.floor(charValue)}円！ ${gameState.combo} Combo!`;
         elements.feedback.style.color = difficultyConfig[gameState.difficulty].color;
         elements.userInput.textContent = typingState.currentInput;
 
         // 所持金をリアルタイム更新
-        elements.moneyValue.textContent = formatMoney(gameState.money);
+        elements.moneyValue.textContent = formatMoney(Math.floor(gameState.money));
 
         // パーティクル
         createParticle(window.innerWidth / 2, window.innerHeight / 2, '💰');
 
         // 単語完成チェック
-        if (typingState.currentInput === targetRomaji) {
+        if (typingState.currentInput === typingState.currentWord.romaji) {
             gameState.totalWords++;
             const bonus = Math.floor(charValue * 2);
             elements.feedback.textContent = `単語完成！ +${bonus}円ボーナス！`;
@@ -392,7 +538,7 @@ function handleChar(char) {
             // ボーナスも即座に加算
             gameState.money += bonus;
             gameState.sessionEarnings += bonus;
-            elements.moneyValue.textContent = formatMoney(gameState.money);
+            elements.moneyValue.textContent = formatMoney(Math.floor(gameState.money));
 
             // 次の単語へ
             setTimeout(() => {
@@ -527,100 +673,46 @@ function endSession() {
 // ショップシステム
 // =====================
 
-const gachaItems = {
-    N: [
-        { id: 'n1', name: 'タワシロボ', emoji: '🤖', production: 100, rarity: 'N' },
-        { id: 'n2', name: 'おにぎりマシン', emoji: '🍙', production: 150, rarity: 'N' }
-    ],
-    R: [
-        { id: 'r1', name: 'ラーメンポット', emoji: '🍜', production: 500, rarity: 'R' },
-        { id: 'r2', name: 'お掃除ドローン', emoji: '🧹', production: 750, rarity: 'R' }
-    ],
-    SR: [
-        { id: 'sr1', name: '寿司製造機', emoji: '🍣', production: 2500, rarity: 'SR' },
-        { id: 'sr2', name: '自動配膳機', emoji: '🍽️', production: 3500, rarity: 'SR' }
-    ],
-    SSR: [
-        { id: 'ssr1', name: 'ケーキ工場', emoji: '🍰', production: 12000, rarity: 'SSR' },
-        { id: 'ssr2', name: '超高速コンベア', rarity: 'SSR', emoji: '⚡', production: 15000 }
-    ],
-    UR: [
-        { id: 'ur1', name: '銀河寿司工場', emoji: '🌌', production: 100000, rarity: 'UR' }
-    ]
-};
+const shopItems = [
+    { id: 'item1', name: 'タワシロボ', emoji: '🤖', production: 2, baseCost: 500 },
+    { id: 'item2', name: 'おにぎりマシン', emoji: '🍙', production: 5, baseCost: 1500 },
+    { id: 'item3', name: 'ラーメンポット', emoji: '🍜', production: 15, baseCost: 5000 },
+    { id: 'item4', name: '寿司製造機', emoji: '🍣', production: 50, baseCost: 20000 },
+    { id: 'item5', name: 'ケーキ工場', emoji: '🍰', production: 200, baseCost: 100000 },
+    { id: 'item6', name: '銀河寿司工場', emoji: '🌌', production: 1500, baseCost: 750000 }
+];
 
-const gachaProbabilities = {
-    UR: 0.01,
-    SSR: 0.04,
-    SR: 0.15,
-    R: 0.30,
-    N: 0.50
-};
-
-function getGachaCost() {
-    // 基礎コスト 1000 または 生産額の 100倍
-    const baseCost = 1000;
-    const productionCost = gameState.totalProduction * 60; // 1分間の生産額
-    return Math.max(baseCost, productionCost);
+function getItemCost(item) {
+    const owned = gameState.inventory[item.id] || 0;
+    return Math.floor(item.baseCost * Math.pow(1.15, owned));
 }
 
-function spinGacha() {
-    const cost = getGachaCost();
+function buyItem(itemId) {
+    const item = shopItems.find(i => i.id === itemId);
+    if (!item) return;
 
-    if (gameState.money < cost) {
-        elements.feedback.textContent = 'お金が足りません！';
-        elements.feedback.style.color = '#ff4444';
-        return;
-    }
+    const cost = getItemCost(item);
 
-    gameState.money -= cost;
-    updateUI();
+    if (gameState.money >= cost) {
+        gameState.money -= cost;
+        gameState.inventory[itemId] = (gameState.inventory[itemId] || 0) + 1;
 
-    // ガチャ演出
-    const resultArea = document.getElementById('gachaResultArea');
-    resultArea.innerHTML = '<div class="gacha-animation">ガチャを回しています... 🎁</div>';
-
-    setTimeout(() => {
-        const rand = Math.random();
-        let rarity = 'N';
-        let cumulative = 0;
-
-        for (const [r, prob] of Object.entries(gachaProbabilities)) {
-            cumulative += prob;
-            if (rand < cumulative) {
-                rarity = r;
-                break;
-            }
-        }
-
-        const items = gachaItems[rarity];
-        const item = items[Math.floor(Math.random() * items.length)];
-
-        // インベントリに追加
-        gameState.inventory[item.id] = (gameState.inventory[item.id] || 0) + 1;
         recalculateTotalProduction();
+        updateShopDisplay();
         updateUI();
         saveGame();
 
-        // 結果表示
-        resultArea.innerHTML = `
-            <div class="gacha-result-card ${item.rarity.toLowerCase()}">
-                <div class="rarity-badge">${item.rarity}</div>
-                <div class="result-emoji">${item.emoji}</div>
-                <div class="result-name">${item.name}</div>
-                <div class="result-production">+${formatMoney(item.production)}/分</div>
-            </div>
-        `;
-
-        elements.feedback.textContent = `${item.rarity} ${item.name} をゲット！`;
+        elements.feedback.textContent = `${item.emoji} ${item.name} を購入！`;
         elements.feedback.style.color = '#00ff88';
-    }, 1000);
+    } else {
+        elements.feedback.textContent = 'お金が足りません！';
+        elements.feedback.style.color = '#ff4444';
+    }
 }
 
 function recalculateTotalProduction() {
     gameState.totalProduction = 0;
-    const allItems = Object.values(gachaItems).flat();
-    for (let item of allItems) {
+    for (let item of shopItems) {
         const count = gameState.inventory[item.id] || 0;
         gameState.totalProduction += item.production * count;
     }
@@ -664,19 +756,24 @@ function updateUpgradeDisplay() {
 }
 
 function updateShopDisplay() {
-    const cost = getGachaCost();
-    const canSpin = gameState.money >= cost;
+    elements.shopList.innerHTML = shopItems.map(item => {
+        const cost = getItemCost(item);
+        const owned = gameState.inventory[item.id] || 0;
+        const canBuy = gameState.money >= cost;
 
-    elements.shopList.innerHTML = `
-        <div class="gacha-container">
-            <div class="gacha-description">ガチャを回して設備をゲット！レア度が高いほど生産力アップ！</div>
-            <div class="gacha-cost">1回: 💰 ${formatMoney(cost)}</div>
-            <button class="gacha-button" onclick="spinGacha()" ${canSpin ? '' : 'disabled'}>
-                ガチャを回す！ 🎁
-            </button>
-            <div id="gachaResultArea" class="gacha-result-area"></div>
-        </div>
-    `;
+        return `
+            <div class="shop-item">
+                <div class="shop-item-emoji">${item.emoji}</div>
+                <div class="shop-item-details">
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-production">+${formatMoney(item.production)}/秒 (所持: ${owned})</div>
+                </div>
+                <button class="buy-button-small" onclick="buyItem('${item.id}')" ${canBuy ? '' : 'disabled'}>
+                    💰${formatMoney(cost)}
+                </button>
+            </div>
+        `;
+    }).join('');
 }
 
 // =====================
@@ -685,7 +782,7 @@ function updateShopDisplay() {
 function updateUI() {
     elements.moneyValue.textContent = formatMoney(gameState.money);
     elements.charValue.textContent = getCharValue() + '円/文字';
-    elements.productionValue.textContent = formatMoney(gameState.totalProduction) + '/分';
+    elements.productionValue.textContent = formatMoney(Math.floor(gameState.totalProduction)) + '/秒';
     updateInventoryDisplay();
 }
 
@@ -697,11 +794,10 @@ function updateSessionUI() {
 }
 
 function updateInventoryDisplay() {
-    const allItems = Object.values(gachaItems).flat();
-    const ownedItems = allItems.filter(item => (gameState.inventory[item.id] || 0) > 0);
+    const ownedItems = shopItems.filter(item => (gameState.inventory[item.id] || 0) > 0);
 
     if (ownedItems.length === 0) {
-        elements.inventoryList.innerHTML = '<div class="inventory-empty">まだ設備がありません</div>';
+        elements.inventoryList.innerHTML = '<div class="inventory-empty">設備なし</div>';
         return;
     }
 
@@ -710,16 +806,9 @@ function updateInventoryDisplay() {
         const totalProduction = item.production * count;
 
         return `
-            <div class="inventory-item ${item.rarity.toLowerCase()}">
-                <div class="item-info">
-                    <div class="rarity-badge-mini">${item.rarity}</div>
-                    <div class="item-emoji">${item.emoji}</div>
-                    <div class="item-details">
-                        <div class="item-name">${item.name}</div>
-                        <div class="item-count">×${count}</div>
-                    </div>
-                </div>
-                <div class="item-production">${formatMoney(totalProduction)}/分</div>
+            <div class="inventory-item-mini">
+                <span>${item.emoji} ${item.name} ×${count}</span>
+                <span class="item-prod-mini">+${formatMoney(totalProduction)}/秒</span>
             </div>
         `;
     }).join('');
@@ -844,7 +933,7 @@ function init() {
 }
 
 // グローバル関数として公開
-window.spinGacha = spinGacha;
+window.buyItem = buyItem;
 window.buyUpgrade = buyUpgrade;
 
 // ページ読み込み後に初期化
