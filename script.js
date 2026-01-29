@@ -87,20 +87,20 @@ const upgradeConfig = {
     charValue: {
         name: '文字単価アップ',
         icon: '💰',
-        maxLevel: 5,
-        baseCost: 1000,
-        costMultiplier: 2.5,
-        getEffect: (level) => 10 + (level * 10),
-        getDescription: (level) => `${10 + (level * 10)}円/文字 → ${10 + ((level + 1) * 10)}円/文字`
+        maxLevel: 20,
+        baseCost: 300,
+        costMultiplier: 1.3,
+        getEffect: (level) => 10 + (level * 5), // 10, 15, 20, 25, 30... 110
+        getDescription: (level) => `${10 + (level * 5)}円/文字 → ${10 + ((level + 1) * 5)}円/文字`
     },
     timeLimit: {
         name: '制限時間延長',
         icon: '⏰',
-        maxLevel: 5,
-        baseCost: 2000,
-        costMultiplier: 2.0,
-        getEffect: (level) => 60 + (level * 30),
-        getDescription: (level) => `${60 + (level * 30)}秒 → ${60 + ((level + 1) * 30)}秒`
+        maxLevel: 20,
+        baseCost: 500,
+        costMultiplier: 1.25,
+        getEffect: (level) => 60 + (level * 15), // 60, 75, 90, 105... 360
+        getDescription: (level) => `${60 + (level * 15)}秒 → ${60 + ((level + 1) * 15)}秒`
     }
 };
 
@@ -583,6 +583,7 @@ function updateUI() {
 }
 
 function updateSessionUI() {
+    elements.moneyValue.textContent = formatMoney(gameState.money);
     elements.sessionEarnings.textContent = formatMoney(gameState.sessionEarnings);
     elements.correctChars.textContent = gameState.correctChars;
     elements.totalWords.textContent = gameState.totalWords;
