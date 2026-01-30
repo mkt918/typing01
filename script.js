@@ -19,7 +19,9 @@ const gameState = {
     maxTime: 30,                // 最大時間（秒）
     combo: 0,                   // コンボ数
     isFever: false,             // フィーバーモード中かどうか
-    feverEndTime: 0             // フィーバー終了時刻
+    feverEndTime: 0,            // フィーバー終了時刻
+    activeTheme: 'default',     // 現在のテーマ
+    unlockedThemes: ['default'] // 解放済みテーマ
 };
 
 // UI要素の取得
@@ -47,7 +49,9 @@ const elements = {
     difficultyLevel2: document.getElementById('difficultyLevel2'),
     difficultyLevel3: document.getElementById('difficultyLevel3'),
     difficultyLevel4: document.getElementById('difficultyLevel4'),
-    difficultyLevel5: document.getElementById('difficultyLevel5')
+    difficultyLevel5: document.getElementById('difficultyLevel5'),
+    themeList: document.getElementById('themeList'),
+    difficultyMessage: document.getElementById('difficultyMessage')
 };
 
 
@@ -67,64 +71,66 @@ const upgradeConfig = {
         name: '文字単価アップ',
         icon: '💰',
         maxLevel: 100,
-        baseCost: 50,  // 初期コストを引き上げ
-        costMultiplier: 1.15,
-        getEffect: (level) => 1 + level,
-        getDescription: (level) => `${1 + level}円 → ${1 + level + 1}円`
+        baseCost: 100,
+        costMultiplier: 1.25,
+        getEffect: (level) => 1 + (level * 2),
+        getDescription: (level) => `${1 + (level * 2)}円 → ${1 + ((level + 1) * 2)}円`
     },
     timeLimit: {
         name: '制限時間延長',
         icon: '⏰',
         maxLevel: 30,
-        baseCost: 300,
-        costMultiplier: 1.2,
-        getEffect: (level) => 30 + (level * 2),
-        getDescription: (level) => `${30 + (level * 2)}秒 → ${30 + ((level + 1) * 2)}秒`
+        baseCost: 500,
+        costMultiplier: 1.3,
+        getEffect: (level) => 30 + (level * 5),
+        getDescription: (level) => `${30 + (level * 5)}秒 → ${30 + ((level + 1) * 5)}秒`
     },
     comboMultiplier: {
         name: 'コンボレベル解放',
         icon: '🔥',
         maxLevel: 10,
-        baseCost: 500,
-        costMultiplier: 2.0,
-        getEffect: (level) => level, // 到達可能な最大レベル
-        getDescription: (level) => `最大フィーバーレベル Lv.${level} → Lv.${level + 1}`
+        baseCost: 2000,
+        costMultiplier: 1.5,
+        getEffect: (level) => level,
+        getDescription: (level) => level === 0
+            ? '20コンボで「報酬2.0倍」が発動可能になります'
+            : `${20 * level}コンボまでの特典を解放（次は${20 * (level + 1)}コンボで${((level + 1) * 0.5 + 1.5).toFixed(1)}倍）`
     },
     unlockLevel2: {
         name: '難易度「レベル2」解放',
         icon: '🔓',
         maxLevel: 1,
-        baseCost: 5000,
+        baseCost: 2500,
         costMultiplier: 1,
         getEffect: (level) => level > 0,
-        getDescription: (level) => level > 0 ? '解放済み' : '「レベル2 (×1.5)」を解放します'
+        getDescription: (level) => level > 0 ? '解放済み' : '「レベル2 (報酬2倍)」を解放します'
     },
     unlockLevel3: {
         name: '難易度「レベル3」解放',
         icon: '🔓',
         maxLevel: 1,
-        baseCost: 10000,
+        baseCost: 5000,
         costMultiplier: 1,
         getEffect: (level) => level > 0,
-        getDescription: (level) => level > 0 ? '解放済み' : '「レベル3 (×2.0)」を解放します'
+        getDescription: (level) => level > 0 ? '解放済み' : '「レベル3 (報酬3倍)」を解放します'
     },
     unlockLevel4: {
         name: '難易度「レベル4」解放',
         icon: '🔓',
         maxLevel: 1,
-        baseCost: 30000,
+        baseCost: 15000,
         costMultiplier: 1,
         getEffect: (level) => level > 0,
-        getDescription: (level) => level > 0 ? '解放済み' : '「レベル4 (×3.0)」を解放します'
+        getDescription: (level) => level > 0 ? '解放済み' : '「レベル4 (報酬5倍)」を解放します'
     },
     unlockLevel5: {
         name: '難易度「レベル5」解放',
         icon: '🔓',
         maxLevel: 1,
-        baseCost: 50000,
+        baseCost: 25000,
         costMultiplier: 1,
         getEffect: (level) => level > 0,
-        getDescription: (level) => level > 0 ? '解放済み' : '「レベル5 (×5.0)」を解放します'
+        getDescription: (level) => level > 0 ? '解放済み' : '「レベル5 (報酬10倍)」を解放します'
     }
 };
 
@@ -167,10 +173,10 @@ function buyUpgrade(upgradeType) {
 // =====================
 const difficultyConfig = {
     easy: { name: 'レベル1', multiplier: 1.0, color: '#00ff88' },
-    normal: { name: 'レベル2', multiplier: 1.5, color: '#ffaa00' },
-    hard: { name: 'レベル3', multiplier: 2.0, color: '#ff4444' },
-    level4: { name: 'レベル4', multiplier: 3.0, color: '#ff00ff' },
-    level5: { name: 'レベル5', multiplier: 5.0, color: '#ff0000' }
+    normal: { name: 'レベル2', multiplier: 2.0, color: '#ffaa00' },
+    hard: { name: 'レベル3', multiplier: 3.0, color: '#ff4444' },
+    level4: { name: 'レベル4', multiplier: 5.0, color: '#ff00ff' },
+    level5: { name: 'レベル5', multiplier: 10.0, color: '#ff0000' }
 };
 
 function setDifficulty(difficulty) {
@@ -186,10 +192,12 @@ function setDifficulty(difficulty) {
 
     if (unlockMap[difficulty] && !gameState.upgrades[unlockMap[difficulty]]) {
         const config = difficultyConfig[difficulty];
-        elements.feedback.textContent = `「${config.name}」を解放するにはショップで購入してください！`;
-        elements.feedback.style.color = '#ffaa00';
+        elements.difficultyMessage.textContent = `「${config.name}」を解放するにはショップで購入してください！`;
+        elements.difficultyMessage.style.color = '#ffaa00';
         return;
     }
+
+    elements.difficultyMessage.textContent = ''; // 警告をクリア
 
     gameState.difficulty = difficulty;
 
@@ -581,10 +589,90 @@ function endSession() {
 // =====================
 
 
+const themeConfig = {
+    default: { name: 'デフォルト', color: '#1a1a2e', textColor: '#fff', cost: 0, icon: '🍣' },
+    deepsea: { name: '深海', color: '#001a33', textColor: '#00d4ff', cost: 10000, icon: '🐙' },
+    neon: { name: 'ネオン', color: '#1a0033', textColor: '#ff00ff', cost: 50000, icon: '🌃' },
+    sakura: { name: '桜', color: '#2e1a1a', textColor: '#ffb7c5', cost: 200000, icon: '🌸' },
+    galaxy: { name: '宇宙', color: '#000000', textColor: '#fff', cost: 1000000, icon: '🌌' }
+};
+
+function buyTheme(themeId) {
+    const theme = themeConfig[themeId];
+    if (!theme) return;
+
+    if (gameState.unlockedThemes.includes(themeId)) {
+        applyTheme(themeId);
+        updateThemeDisplay();
+        return;
+    }
+
+    if (gameState.money >= theme.cost) {
+        gameState.money -= theme.cost;
+        gameState.unlockedThemes.push(themeId);
+        applyTheme(themeId);
+        updateThemeDisplay();
+        updateUI();
+        saveGame();
+        elements.feedback.textContent = `テーマ「${theme.name}」を購入 & 適用しました！`;
+    } else {
+        elements.feedback.textContent = 'お金が足りません！';
+    }
+}
+
+function applyTheme(themeId) {
+    const theme = themeConfig[themeId];
+    if (!theme) return;
+
+    gameState.activeTheme = themeId;
+    document.body.style.backgroundColor = theme.color;
+    document.documentElement.style.setProperty('--main-bg', theme.color);
+    document.documentElement.style.setProperty('--main-text', theme.textColor);
+    saveGame();
+}
+
+function updateThemeDisplay() {
+    if (!elements.themeList) return;
+    elements.themeList.innerHTML = Object.keys(themeConfig).map(themeId => {
+        const theme = themeConfig[themeId];
+        const isUnlocked = gameState.unlockedThemes.includes(themeId);
+        const isActive = gameState.activeTheme === themeId;
+        const canBuy = gameState.money >= theme.cost;
+
+        return `
+            <div class="theme-item ${isActive ? 'active' : ''} ${isUnlocked ? 'unlocked' : ''}">
+                <div class="theme-icon">${theme.icon}</div>
+                <div class="theme-name">${theme.name}</div>
+                ${isUnlocked ? `
+                    <button class="buy-button-small" onclick="buyTheme('${themeId}')">
+                        ${isActive ? '適用中' : '適用する'}
+                    </button>
+                ` : `
+                    <div class="theme-cost">💰 ${formatMoney(theme.cost)}</div>
+                    <button class="buy-button-small" onclick="buyTheme('${themeId}')" ${canBuy ? '' : 'disabled'}>
+                        購入する
+                    </button>
+                `}
+            </div>
+        `;
+    }).join('');
+}
+
+// 既存の updateUI を修正して updateThemeDisplay を呼ぶようにする
+function updateUI() {
+    const moneyText = formatMoney(Math.floor(gameState.money));
+    elements.moneyValue.textContent = moneyText;
+    if (elements.shopMoneyValue) elements.shopMoneyValue.textContent = moneyText;
+
+    elements.charValue.textContent = getCharValue() + '円/文字';
+    updateThemeDisplay();
+}
+
 function openShop() {
     elements.typingMode.classList.add('hidden');
     elements.shopMode.classList.remove('hidden');
     updateUpgradeDisplay();
+    updateThemeDisplay();
 }
 
 function closeShop() {
@@ -627,6 +715,7 @@ function updateUI() {
     if (elements.shopMoneyValue) elements.shopMoneyValue.textContent = moneyText;
 
     elements.charValue.textContent = getCharValue() + '円/文字';
+    updateThemeDisplay();
 }
 
 function updateSessionUI() {
@@ -669,50 +758,11 @@ function resetGame() {
 // セーブ・ロード機能
 // =====================
 function saveGame() {
-    try {
-        const saveData = {
-            money: gameState.money,
-            upgrades: gameState.upgrades,
-            difficulty: gameState.difficulty
-        };
-
-        localStorage.setItem('sushiTyperFactory', JSON.stringify(saveData));
-        console.log('💾 ゲームを保存しました');
-    } catch (error) {
-        console.error('セーブに失敗しました:', error);
-    }
+    console.log('💾 セーブ機能は無効化されています（セッション限定）');
 }
 
 function loadGame() {
-    try {
-        const saveDataStr = localStorage.getItem('sushiTyperFactory');
-        if (!saveDataStr) {
-            console.log('新規ゲームを開始します');
-            return false;
-        }
-
-        const saveData = JSON.parse(saveDataStr);
-        gameState.money = saveData.money || 0;
-
-        // アップグレードの統合（既存データに無い新しい項目を補完）
-        if (saveData.upgrades) {
-            Object.keys(saveData.upgrades).forEach(key => {
-                if (gameState.upgrades.hasOwnProperty(key)) {
-                    gameState.upgrades[key] = saveData.upgrades[key];
-                }
-            });
-        }
-
-        gameState.difficulty = saveData.difficulty || 'easy';
-        gameState.energy = saveData.energy !== undefined ? saveData.energy : 100;
-        recalculateTotalProduction();
-
-        console.log('📂 セーブデータをロードしました');
-        return true;
-    } catch (error) {
-        console.error('ロードに失敗しました:', error);
-        return false;
-    }
+    console.log('🔄 新規セッション（セーブなし）');
 }
 
 // =====================
@@ -739,14 +789,14 @@ function init() {
     elements.difficultyLevel5.addEventListener('click', () => setDifficulty('level5'));
     window.addEventListener('keydown', handleKeyPress);
 
-    // リアルタイム所持金更新開始
-    updateMoneyRealtime();
+    // リアルタイム所持金更新開始は削除（自動生産廃止のため）
 
     console.log('✅ 初期化完了！');
 }
 
 // グローバル関数として公開
 window.buyUpgrade = buyUpgrade;
+window.buyTheme = buyTheme;
 
 // ページ読み込み後に初期化
 window.addEventListener('DOMContentLoaded', init);

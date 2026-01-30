@@ -40,12 +40,14 @@
         <div id="typingMode" class="typing-mode">
             <div class="sushi-display">
                 <div class="sushi-emoji">🍣</div>
-                <div class="money-hub">
-                    <div class="money-display-main">
-                        <span id="moneyValue">0円</span>
-                    </div>
-                    <div class="feedback-container">
+                <div class="typing-stats-container">
+                    <div class="money-hub">
+                        <div class="money-display-main">
+                            <span id="moneyValue">0円</span>
+                        </div>
                         <div id="feedback" class="feedback-main"></div>
+                    </div>
+                    <div class="combo-area">
                         <div id="comboDisplay" class="combo-display">0 Combo</div>
                     </div>
                 </div>
@@ -54,21 +56,22 @@
             <!-- 難易度選択 -->
             <div class="difficulty-selector">
                 <button id="difficultyLevel1" class="difficulty-button active" data-difficulty="easy">
-                    レベル1 (×1.0)
+                    レベル1<br>(報酬1倍)
                 </button>
                 <button id="difficultyLevel2" class="difficulty-button" data-difficulty="normal">
-                    レベル2 (×1.5)
+                    レベル2<br>(報酬2倍)
                 </button>
                 <button id="difficultyLevel3" class="difficulty-button" data-difficulty="hard">
-                    レベル3 (×2.0)
+                    レベル3<br>(報酬3倍)
                 </button>
                 <button id="difficultyLevel4" class="difficulty-button" data-difficulty="level4">
-                    レベル4 (×3.0)
+                    レベル4<br>(報酬5倍)
                 </button>
                 <button id="difficultyLevel5" class="difficulty-button" data-difficulty="level5">
-                    レベル5 (×5.0)
+                    レベル5<br>(報酬10倍)
                 </button>
             </div>
+            <div id="difficultyMessage" class="difficulty-message"></div>
 
             <div class="typing-area">
                 <div id="targetWordJapanese" class="target-word-japanese">準備中...</div>
@@ -98,6 +101,15 @@
                     アップグレードでタイピングがもっと稼げる！
                 </div>
                 <div id="upgradeList" class="upgrade-list"></div>
+            </div>
+
+            <!-- テーマセクション -->
+            <div class="shop-section">
+                <h3 class="section-title">🎨 背景テーマ</h3>
+                <div class="shop-description">
+                    プレミアムなテーマでタイピング画面をカスタマイズ！
+                </div>
+                <div id="themeList" class="theme-list"></div>
             </div>
 
         </div>
